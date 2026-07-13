@@ -1,40 +1,51 @@
-# TypstLab
+# TypstLab App
 
-**TypstLab** is a collaborative, offline-first interactive document editing platform. It merges the document-design simplicity of **Microsoft Word**, the scope model of **Jupyter Notebooks**, and the unparalleled typesetting quality of **Typst** — powered by a **Go** backend and a **PWA** frontend.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-624DE8?style=flat&logo=webassembly&logoColor=white)](https://webassembly.org/)
 
----
+**TypstLab App** is the client-side Progressive Web App (PWA) for the TypstLab collaborative document editor. It merges the document-design simplicity of **Microsoft Word**, the scope model of **Jupyter Notebooks**, and the typesetting quality of **Typst** — running entirely in the browser via **WebAssembly**.
 
-## ✨ Vision & Key Concepts
-
-1. **User-friendly**: A fluid visual editing experience that doesn't hide the underlying power of Typst. It features autocomplete, linting, error diagnostics, and interactive tooltips (similar to the official Typst Web App) directly inline.
-2. **Notebook Hybrid**: Break your documents into interactive cells of text or code.
-3. **True Offline-First**: Sync and collaborate without a server connection. Typst is compiled directly in the browser via **WebAssembly**. All modifications are tracked locally via **CRDT** and synced seamlessly when connectivity is restored.
-4. **Cooperative Development**: Real-time collaborative sessions over WebSockets/WebRTC with cursors, presence indicators, and conflict-free version merging.
+This repository contains the user interface and client-side compilation engine. For the backend synchronization service, see the TypstLab Backend repository.
 
 ---
 
-## 🛠 Proposed Tech Stack
+## ✨ Key Frontend Features
 
-### Frontend (Progressive Web App)
-- **Framework**: **React**.
-- **Text Editor**: ??? with LSP, autocompletion, hover tooltips.
-- **Typst Compilation**: Client-side rendering using **WebAssembly** to render PDFs or SVGs in milliseconds without a server.
-- **Collaboration**: **Yjs** for conflict-free state resolution for server-backed sync.
+1. **Inline Visual Editor (Notebook Hybrid)**:
+   - Split documents into interactive, reorderable cells of rich text or Typst code.
+   - Live preview rendering side-by-side or inline.
+   - Code diagnostics, autocompletion, linting, and hover tooltips for Typst syntax.
 
-### Backend
-- **Networking**: High-performance WebSockets.
-- **CRDT Synchronization**: Go-based Yjs protocol server wrapper to store and merge update chunks.
-- **Database**: ??? Postgres or CoachDb
-- **Authentication**: JWT/OAuth2 cookie-based authentication.
+2. **True Offline-First Architecture**:
+   - **In-Browser Typst Compilation**: Uses WebAssembly to compile Typst source code to SVGs/PDFs client-side in milliseconds, eliminating server roundtrips.
+   - **Local State & CRDT**: Local changes are tracked using **Yjs** CRDTs, stored in IndexedDB, and synchronized conflict-free once connection is established.
+
+3. **Real-time Collaboration**:
+   - Seamless collaboration via WebSockets/WebRTC.
+   - Collaborative cursors, presence indicators, and peer list.
+
+4. **Progressive Web App (PWA)**:
+   - Installable on desktop and mobile.
+   - Works fully offline with service workers caching application assets and WebAssembly modules.
 
 ---
 
+## 🛠 Tech Stack
+
+- **Framework**: [React](https://react.dev/) (with Vite for fast bundling)
+- **Text Editor**: [CodeMirror 6](https://codemirror.net/) / [Monaco Editor](https://microsoft.github.io/monaco-editor/) (customized for Typst syntax and LSP integration)
+- **Typst Compiler**: Client-side WASM compilation of [Typst](https://github.com/typst/typst)
+- **Conflict-free Replicated Data Types (CRDT)**: [Yjs](https://github.com/yjs/yjs) with Y-IndexedDB provider for local storage
+- **Styling**: Modern CSS / CSS Modules
+- **Communication Protocol**: WebSockets & WebRTC via [y-websocket](https://github.com/yjs/y-websocket) and [y-webrtc](https://github.com/yjs/y-webrtc)
+
 ---
 
-## 🗺 Roadmap
-
+## 🗺 Roadmap (Frontend)
 
 ---
 
 ## 📄 License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

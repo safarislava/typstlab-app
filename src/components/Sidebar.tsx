@@ -109,7 +109,7 @@ export const Sidebar: React.FC = () => {
                   >
                     <span className="cell-bullet"></span>
                     <span className="cell-link-text">
-                      Cell {index + 1} ({cell.content.slice(0, 15).trim() || 'empty'}...)
+                      {cell.title ? `${index + 1}. ${cell.title}` : `Cell ${index + 1}`}
                     </span>
                   </div>
                 ))}

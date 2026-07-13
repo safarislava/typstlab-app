@@ -47,6 +47,7 @@ export const CellContainer: React.FC<CellContainerProps> = ({ cell, index, isAct
         <CellEditor
           id={cell.id}
           content={cell.content}
+          title={cell.title}
           isActive={isActive}
           onFocus={onFocus}
           index={index}

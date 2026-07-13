@@ -656,20 +656,19 @@ body {
 }
 
 .cell-container {
-  background-color: rgba(255, 255, 255, 0.01);
-  border: 1px solid var(--border-color);
-  border-left: 3px solid transparent;
+  background-color: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 6px;
   margin: 12px 0;
-  padding: 12px 16px;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  padding: 12px 16px 12px 18px;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
   position: relative;
 
   &.focused {
-    background-color: rgba(255, 255, 255, 0.025);
-    border-color: rgba(35, 157, 173, 0.35);
-    border-left-color: var(--accent-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 8px rgba(35, 157, 173, 0.05);
+    background-color: rgba(255, 255, 255, 0.03);
+    border-color: rgba(35, 157, 173, 0.75);
+    border-left: 3px solid var(--accent-color);
+    padding: 12px 16px 12px 16px;
   }
 
   &:hover, &.focused {
@@ -735,14 +734,18 @@ body {
 }
 
 .cell-lang-tag {
-  font-family: var(--font-mono), serif;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: #4f525a;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
   user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.cell-container.focused .cell-lang-tag {
+  color: var(--accent-color);
 }
 
 .code-editor-textarea {

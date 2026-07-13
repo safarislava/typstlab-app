@@ -13,6 +13,8 @@ interface DocumentState {
   previewMode: 'side-by-side' | 'preview-only' | 'edit-only';
   isCompiling: boolean;
   connectionStatus: 'connected' | 'connecting' | 'offline';
+  compilerReady: boolean;
+  compilerError: string | null;
 }
 
 const initialState: DocumentState = {
@@ -30,7 +32,9 @@ const initialState: DocumentState = {
   activeCellId: 'cell-initial-2',
   previewMode: 'side-by-side',
   isCompiling: false,
-  connectionStatus: 'offline'
+  connectionStatus: 'offline',
+  compilerReady: false,
+  compilerError: null
 };
 
 const documentSlice = createSlice({
@@ -51,7 +55,7 @@ const documentSlice = createSlice({
       const { index } = action.payload;
       const newCell: Cell = {
         id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        content: '// Write Typst here...'
+        content: ''
       };
       state.cells.splice(index, 0, newCell);
       state.activeCellId = newCell.id;
@@ -85,6 +89,12 @@ const documentSlice = createSlice({
     },
     setConnectionStatus: (state, action: PayloadAction<'connected' | 'connecting' | 'offline'>) => {
       state.connectionStatus = action.payload;
+    },
+    setCompilerReady: (state, action: PayloadAction<boolean>) => {
+      state.compilerReady = action.payload;
+    },
+    setCompilerError: (state, action: PayloadAction<string | null>) => {
+      state.compilerError = action.payload;
     }
   }
 });
@@ -98,7 +108,9 @@ export const {
   setActiveCellId,
   setPreviewMode,
   setIsCompiling,
-  setConnectionStatus
+  setConnectionStatus,
+  setCompilerReady,
+  setCompilerError
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

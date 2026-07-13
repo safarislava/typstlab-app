@@ -16,7 +16,7 @@ export const CellContainer: React.FC<CellContainerProps> = ({ cell, index, isAct
   const dispatch = useAppDispatch();
 
   return (
-    <div className={`cell-container ${isActive ? 'focused' : ''}`}>
+    <div id={`cell-container-${cell.id}`} className={`cell-container ${isActive ? 'focused' : ''}`}>
       <div className="cell-toolbar">
         <div className="toolbar-right-group">
           <button

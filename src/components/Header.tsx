@@ -3,6 +3,7 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setTitle, setPreviewMode } from '../store/documentSlice';
 import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
+import { globalCompilerQueue } from '../lsp/compilerQueue';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -18,7 +19,9 @@ export const Header: React.FC = () => {
     if (!compilerReady) return;
     try {
       const fullSource = cells.map(cell => cell.content).join('\n\n');
-      const pdfBytes = await $typst.pdf({ mainContent: fullSource });
+      const pdfBytes = await globalCompilerQueue.run(() =>
+        $typst.pdf({ mainContent: fullSource })
+      );
       if (pdfBytes) {
         const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);

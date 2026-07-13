@@ -1,6 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { useAppDispatch } from '../store/hooks';
+import React from 'react';
+import CodeMirror from '@uiw/react-codemirror';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateCellContent, updateCellTitle } from '../store/documentSlice';
+import { useLspExtensions } from '../lsp/lspManager';
+import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';
 
 interface CellEditorProps {
   id: string;
@@ -20,24 +23,19 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   index
 }) => {
   const dispatch = useAppDispatch();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const compilerError = useAppSelector((state) => state.document.compilerError);
+  const cells = useAppSelector((state) => state.document.cells);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    dispatch(updateCellContent({ id, content: e.target.value }));
+  const handleCodeChange = (value: string) => {
+    dispatch(updateCellContent({ id, content: value }));
   };
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(updateCellTitle({ id, title: e.target.value }));
   };
 
-  // Adjust textarea height to match content scrollHeight
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [content]);
+  // Retrieve appropriate LSP extensions (automatically swaps between online WebSocket and offline fallback)
+  const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={onFocus}>
@@ -54,16 +52,25 @@ export const CellEditor: React.FC<CellEditorProps> = ({
           spellCheck={false}
         />
       </div>
-      <textarea
-        ref={textareaRef}
-        className="code-editor-textarea"
-        value={content}
-        onChange={handleChange}
-        onFocus={onFocus}
-        placeholder="// Write Typst here..."
-        spellCheck={false}
-        rows={1}
-      />
+      
+      <div className="editor-wrapper" style={{ border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+        <CodeMirror
+          value={content}
+          height="auto"
+          theme={intellijDarkTheme}
+          extensions={[typstHighlightLanguage, ...lspExtensions]}
+          onChange={handleCodeChange}
+          onFocus={onFocus}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: false,
+            highlightActiveLine: true,
+            autocompletion: true,
+            tabSize: 2,
+          }}
+          style={{ fontSize: '13px', fontFamily: 'Fira Code, monospace' }}
+        />
+      </div>
     </div>
   );
 };

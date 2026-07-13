@@ -39,10 +39,6 @@ export const Header: React.FC = () => {
     <header className="app-header">
       <div className="header-left">
         <div className="brand-container">
-          <svg className="typst-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="16" fill="#239dad" />
-            <path d="M10 21V11h12v3h-8v7h-4z" fill="white" />
-          </svg>
           <div className="brand-logo-text">
             <span className="logo-typst">typst</span>
             <span className="logo-lab">lab</span>

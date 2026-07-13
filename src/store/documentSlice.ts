@@ -4,6 +4,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 export interface Cell {
   id: string;
   content: string;
+  title?: string;
 }
 
 interface DocumentState {
@@ -13,6 +14,8 @@ interface DocumentState {
   previewMode: 'side-by-side' | 'preview-only' | 'edit-only';
   isCompiling: boolean;
   connectionStatus: 'connected' | 'connecting' | 'offline';
+  compilerReady: boolean;
+  compilerError: string | null;
 }
 
 const initialState: DocumentState = {
@@ -20,17 +23,21 @@ const initialState: DocumentState = {
   cells: [
     {
       id: 'cell-initial-1',
-      content: '= Welcome to TypstLab\n\nThis is an interactive document editing platform. You can create cells of Typst markup.'
+      content: '= Welcome to TypstLab\n\nThis is an interactive document editing platform. You can create cells of Typst markup.',
+      title: 'Welcome Section'
     },
     {
       id: 'cell-initial-2',
-      content: '// Edit this Typst code\n#set page(width: 10cm, height: auto, margin: 1cm)\n#set text(fill: rgb("1c5a99"), size: 14pt)\n\nHello *TypstLab* from WebAssembly!'
+      content: '// Edit this Typst code\n#set page(width: 10cm, height: auto, margin: 1cm)\n#set text(fill: rgb("1c5a99"), size: 14pt)\n\nHello *TypstLab* from WebAssembly!',
+      title: 'Styling Example'
     }
   ],
   activeCellId: 'cell-initial-2',
   previewMode: 'side-by-side',
   isCompiling: false,
-  connectionStatus: 'offline'
+  connectionStatus: 'offline',
+  compilerReady: false,
+  compilerError: null
 };
 
 const documentSlice = createSlice({
@@ -47,11 +54,18 @@ const documentSlice = createSlice({
         cell.content = content;
       }
     },
+    updateCellTitle: (state, action: PayloadAction<{ id: string; title: string }>) => {
+      const { id, title } = action.payload;
+      const cell = state.cells.find(c => c.id === id);
+      if (cell) {
+        cell.title = title;
+      }
+    },
     addCell: (state, action: PayloadAction<{ index: number }>) => {
       const { index } = action.payload;
       const newCell: Cell = {
         id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        content: '// Write Typst here...'
+        content: ''
       };
       state.cells.splice(index, 0, newCell);
       state.activeCellId = newCell.id;
@@ -85,6 +99,12 @@ const documentSlice = createSlice({
     },
     setConnectionStatus: (state, action: PayloadAction<'connected' | 'connecting' | 'offline'>) => {
       state.connectionStatus = action.payload;
+    },
+    setCompilerReady: (state, action: PayloadAction<boolean>) => {
+      state.compilerReady = action.payload;
+    },
+    setCompilerError: (state, action: PayloadAction<string | null>) => {
+      state.compilerError = action.payload;
     }
   }
 });
@@ -92,13 +112,16 @@ const documentSlice = createSlice({
 export const {
   setTitle,
   updateCellContent,
+  updateCellTitle,
   addCell,
   deleteCell,
   moveCell,
   setActiveCellId,
   setPreviewMode,
   setIsCompiling,
-  setConnectionStatus
+  setConnectionStatus,
+  setCompilerReady,
+  setCompilerError
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppDispatch } from '../store/hooks';
 import { setActiveCellId } from '../store/documentSlice';
 import { SidebarDock } from './sidebar/SidebarDock';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAppSelector } from './store/hooks';
 import { Sidebar } from './components/Sidebar';
 import { EditorWorkspace } from './components/EditorWorkspace';

@@ -322,5 +322,22 @@ export const typstHighlightLanguage = StreamLanguage.define({
       markupDepth: [...state.markupDepth],
       inCodeLine: state.inCodeLine
     };
+  },
+  indent(state: any, textAfter: string, context: any) {
+    let indentUnits = 0;
+
+    if (state.codeBrackets && state.codeBrackets.length > 0) {
+      indentUnits += state.codeBrackets.reduce((acc: number, val: number) => acc + val, 0);
+    }
+
+    if (state.markupDepth && state.markupDepth.length > 0) {
+      indentUnits += state.markupDepth.reduce((acc: number, val: number) => acc + val, 0);
+    }
+
+    if (/^[)}\]]/.test(textAfter.trim())) {
+      indentUnits = Math.max(0, indentUnits - 1);
+    }
+
+    return indentUnits * context.unit;
   }
 });

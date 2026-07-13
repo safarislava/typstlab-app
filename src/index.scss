@@ -1025,3 +1025,15 @@ body {
   height: 28px;
   margin-bottom: 8px;
 }
+
+/* Custom styling for CodeMirror matching IntelliJ IDEA Dark theme */
+.cm-editor {
+  .cm-scroller {
+    font-family: var(--font-mono), monospace !important;
+  }
+
+  &.cm-focused {
+    outline: none !important;
+  }
+}
+

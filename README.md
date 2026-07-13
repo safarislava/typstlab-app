@@ -1,6 +1,6 @@
-# Typst Notebook 📝🚀
+# TypstLab
 
-> **Typst Notebook** is a collaborative, offline-first interactive document editing platform. It merges the document-design simplicity of **Microsoft Word**, the scope model of **Jupyter Notebooks**, and the unparalleled typesetting quality of **Typst** — powered by a **Go** backend and a **PWA** frontend.
+**TypstLab** is a collaborative, offline-first interactive document editing platform. It merges the document-design simplicity of **Microsoft Word**, the scope model of **Jupyter Notebooks**, and the unparalleled typesetting quality of **Typst** — powered by a **Go** backend and a **PWA** frontend.
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### Frontend (Progressive Web App)
 - **Framework**: **React**.
-- **Text Editor**: ??? with Typst LSP, autocompletion, hover tooltips.
+- **Text Editor**: ??? with LSP, autocompletion, hover tooltips.
 - **Typst Compilation**: Client-side rendering using **WebAssembly** to render PDFs or SVGs in milliseconds without a server.
 - **Collaboration**: **Yjs** for conflict-free state resolution for server-backed sync.
 

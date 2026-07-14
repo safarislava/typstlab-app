@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, Trash2, Edit } from 'lucide-react';
+import { FileText, FileImage, Trash2, Edit } from 'lucide-react';
 import type { TypstFile } from '../../../store/documentSlice';
 
 interface FileItemProps {
@@ -58,10 +58,18 @@ export const FileItem: React.FC<FileItemProps> = ({
       onClick={() => !isEditing && onSelect()}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-        <FileText
-          size={16}
-          className="file-icon"
-        />
+        {file.isBinary ? (
+          <FileImage
+            size={16}
+            className="file-icon"
+            style={{ color: 'var(--accent-color)' }}
+          />
+        ) : (
+          <FileText
+            size={16}
+            className="file-icon"
+          />
+        )}
         {isEditing ? (
           <input
             ref={editInputRef}

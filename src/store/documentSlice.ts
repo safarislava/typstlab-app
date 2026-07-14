@@ -1,5 +1,5 @@
-import { createSlice } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
+import type {PayloadAction} from '@reduxjs/toolkit';
+import {createSlice} from '@reduxjs/toolkit';
 
 export interface Cell {
   id: string;
@@ -7,10 +7,19 @@ export interface Cell {
   title?: string;
 }
 
-export interface TypstFile {
-  path: string; // e.g. 'main.typ', 'utils.typ'
+export interface TextTypstFile {
+  path: string;
+  isBinary?: false;
   cells: Cell[];
 }
+
+export interface BinaryTypstFile {
+  path: string;
+  isBinary: true;
+  binaryData: Uint8Array;
+}
+
+export type TypstFile = TextTypstFile | BinaryTypstFile;
 
 interface DocumentState {
   title: string;
@@ -29,6 +38,7 @@ const initialState: DocumentState = {
   files: {
     'main.typ': {
       path: 'main.typ',
+      isBinary: false,
       cells: [
         {
           id: 'cell-initial-1',
@@ -62,7 +72,7 @@ const documentSlice = createSlice({
     updateCellContent: (state, action: PayloadAction<{ id: string; content: string }>) => {
       const { id, content } = action.payload;
       const activeFile = state.files[state.activeFilePath];
-      if (activeFile) {
+      if (activeFile && !activeFile.isBinary) {
         const cell = activeFile.cells.find(c => c.id === id);
         if (cell) {
           cell.content = content;
@@ -72,7 +82,7 @@ const documentSlice = createSlice({
     updateCellTitle: (state, action: PayloadAction<{ id: string; title: string }>) => {
       const { id, title } = action.payload;
       const activeFile = state.files[state.activeFilePath];
-      if (activeFile) {
+      if (activeFile && !activeFile.isBinary) {
         const cell = activeFile.cells.find(c => c.id === id);
         if (cell) {
           cell.title = title;
@@ -82,7 +92,7 @@ const documentSlice = createSlice({
     addCell: (state, action: PayloadAction<{ index: number }>) => {
       const { index } = action.payload;
       const activeFile = state.files[state.activeFilePath];
-      if (activeFile) {
+      if (activeFile && !activeFile.isBinary) {
         const newCell: Cell = {
           id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           content: ''
@@ -94,7 +104,7 @@ const documentSlice = createSlice({
     deleteCell: (state, action: PayloadAction<string>) => {
       const id = action.payload;
       const activeFile = state.files[state.activeFilePath];
-      if (activeFile) {
+      if (activeFile && !activeFile.isBinary) {
         activeFile.cells = activeFile.cells.filter(c => c.id !== id);
         if (state.activeCellId === id) {
           state.activeCellId = activeFile.cells[0]?.id || null;
@@ -104,15 +114,16 @@ const documentSlice = createSlice({
     moveCell: (state, action: PayloadAction<{ id: string; direction: 'up' | 'down' }>) => {
       const { id, direction } = action.payload;
       const activeFile = state.files[state.activeFilePath];
-      if (!activeFile) return;
-      const index = activeFile.cells.findIndex(c => c.id === id);
-      if (index === -1) return;
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= activeFile.cells.length) return;
-      
-      const temp = activeFile.cells[index];
-      activeFile.cells[index] = activeFile.cells[newIndex];
-      activeFile.cells[newIndex] = temp;
+      if (activeFile && !activeFile.isBinary) {
+        const index = activeFile.cells.findIndex(c => c.id === id);
+        if (index === -1) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= activeFile.cells.length) return;
+        
+        const temp = activeFile.cells[index];
+        activeFile.cells[index] = activeFile.cells[newIndex];
+        activeFile.cells[newIndex] = temp;
+      }
     },
     setActiveCellId: (state, action: PayloadAction<string | null>) => {
       state.activeCellId = action.payload;
@@ -147,14 +158,15 @@ const documentSlice = createSlice({
           state.activeFilePath = paths[0];
         }
         const activeFile = state.files[state.activeFilePath];
-        state.activeCellId = activeFile?.cells[0]?.id || null;
+        state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
       }
     },
     addFile: (state, action: PayloadAction<{ path: string }>) => {
       const { path } = action.payload;
       if (state.files[path]) return;
-      state.files[path] = {
+      const newFile: TextTypstFile = {
         path,
+        isBinary: false,
         cells: [
           {
             id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -162,8 +174,9 @@ const documentSlice = createSlice({
           }
         ]
       };
+      state.files[path] = newFile;
       state.activeFilePath = path;
-      state.activeCellId = state.files[path].cells[0].id;
+      state.activeCellId = newFile.cells[0].id;
     },
     renameFile: (state, action: PayloadAction<{ oldPath: string; newPath: string }>) => {
       const { oldPath, newPath } = action.payload;
@@ -183,13 +196,15 @@ const documentSlice = createSlice({
         const keys = Object.keys(state.files);
         if (keys.length > 0) {
           state.activeFilePath = keys[0];
-          state.activeCellId = state.files[keys[0]].cells[0]?.id || null;
+          const activeFile = state.files[keys[0]];
+          state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
         } else {
           // Re-create default main.typ if all deleted
           const defaultPath = 'main.typ';
           state.files[defaultPath] = {
             path: defaultPath,
-            cells: [{ id: 'cell-default-1', content: '= Welcome to TypstLab\n' }]
+            isBinary: false,
+            cells: [{id: 'cell-default-1', content: '= Welcome to TypstLab\n'}]
           };
           state.activeFilePath = defaultPath;
           state.activeCellId = 'cell-default-1';
@@ -199,7 +214,32 @@ const documentSlice = createSlice({
     setActiveFilePath: (state, action: PayloadAction<string>) => {
       state.activeFilePath = action.payload;
       const activeFile = state.files[action.payload];
-      state.activeCellId = activeFile?.cells[0]?.id || null;
+      state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
+    },
+    addBinaryFile: (state, action: PayloadAction<{ path: string; binaryData: Uint8Array }>) => {
+      const { path, binaryData } = action.payload;
+      state.files[path] = {
+        path,
+        isBinary: true,
+        binaryData
+      };
+    },
+    addTextFileWithContent: (state, action: PayloadAction<{ path: string; content: string }>) => {
+      const { path, content } = action.payload;
+      const newFile: TextTypstFile = {
+        path,
+        isBinary: false,
+        cells: [
+          {
+            id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            content,
+            title: 'Imported Content'
+          }
+        ]
+      };
+      state.files[path] = newFile;
+      state.activeFilePath = path;
+      state.activeCellId = newFile.cells[0].id;
     }
   }
 });
@@ -221,7 +261,9 @@ export const {
   addFile,
   renameFile,
   deleteFile,
-  setActiveFilePath
+  setActiveFilePath,
+  addBinaryFile,
+  addTextFileWithContent
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

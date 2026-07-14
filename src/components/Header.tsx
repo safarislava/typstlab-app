@@ -4,6 +4,7 @@ import { setTitle, setPreviewMode } from '../store/documentSlice';
 import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
+import { syncFilesToVfs } from '../utils/vfsSync';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -19,12 +20,7 @@ export const Header: React.FC = () => {
     if (!compilerReady) return;
     try {
       // Sync all files to the compiler virtual file system (VFS)
-      await Promise.all(
-        Object.values(files).map(async (file) => {
-          const content = file.cells.map(c => c.content).join('\n\n');
-          await $typst.addSource(`/${file.path}`, content);
-        })
-      );
+      await syncFilesToVfs(files);
 
       const pdfBytes = await globalCompilerQueue.run(() =>
         $typst.pdf({ mainFilePath: `/${activeFilePath}` })

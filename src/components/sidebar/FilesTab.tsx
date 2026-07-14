@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addFile, deleteFile, renameFile, setActiveFilePath } from '../../store/documentSlice';
+import { addFile, deleteFile, renameFile, setActiveFilePath, addBinaryFile, addTextFileWithContent } from '../../store/documentSlice';
 import { Plus } from 'lucide-react';
 import { FileCreateInput } from './files/FileCreateInput';
 import { FileItem } from './files/FileItem';
@@ -14,6 +14,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
   const dispatch = useAppDispatch();
   const { files, activeFilePath, activeCellId } = useAppSelector((state) => state.document);
   const [isCreating, setIsCreating] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleSaveCreate = (name: string) => {
     let filename = name;
@@ -42,8 +43,64 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
     return !!files[name];
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    for (const file of droppedFiles) {
+      const name = file.name;
+      if (name.endsWith('.typ')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const content = event.target?.result as string;
+          dispatch(addTextFileWithContent({ path: name, content }));
+        };
+        reader.readAsText(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const binaryData = new Uint8Array(arrayBuffer);
+          dispatch(addBinaryFile({ path: name, binaryData }));
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    }
+  };
+
   return (
-    <div className="pane-content">
+    <div
+      className={`pane-content files-tab-container ${isDragging ? 'dragging' : ''}`}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ position: 'relative' }}
+    >
+      {isDragging && (
+        <div className="drag-drop-overlay">
+          <div className="overlay-content">
+            <Plus size={32} />
+            <span>Drop to add files</span>
+          </div>
+        </div>
+      )}
+
       <div className="pane-header">
         <span>Files</span>
         <button
@@ -77,7 +134,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
                 exists={checkIfFileExists}
               />
               
-              {isActive && (
+              {isActive && !file.isBinary && file.cells && (
                 <FileCellsList
                   cells={file.cells}
                   activeCellId={activeCellId}
@@ -91,3 +148,4 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
     </div>
   );
 };
+export default FilesTab;

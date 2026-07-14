@@ -4,6 +4,7 @@ import { setIsCompiling, setCompilerError } from '../store/documentSlice';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
+import { syncFilesToVfs } from '../utils/vfsSync';
 
 interface PageData {
   svgHtml: string;
@@ -146,12 +147,7 @@ export const PreviewPanel: React.FC = () => {
 
       try {
         // Sync all files to the compiler virtual file system (VFS)
-        await Promise.all(
-          Object.values(files).map(async (file) => {
-            const content = file.cells.map(c => c.content).join('\n\n');
-            await $typst.addSource(`/${file.path}`, content);
-          })
-        );
+        await syncFilesToVfs(files);
 
         // Compile and render directly to SVG in a single WASM call to avoid borrow checker errors
         const result = await globalCompilerQueue.run(async () => {

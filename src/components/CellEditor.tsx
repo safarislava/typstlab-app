@@ -29,7 +29,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   const files = useAppSelector((state) => state.document.files);
   const activeFilePath = useAppSelector((state) => state.document.activeFilePath);
   const activeFile = files[activeFilePath];
-  const cells = activeFile ? activeFile.cells : [];
+  const cells = activeFile && !activeFile.isBinary ? activeFile.cells : [];
 
   const handleCodeChange = (value: string) => {
     dispatch(updateCellContent({ id, content: value }));

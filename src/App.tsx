@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, initializeProject } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { PreviewPanel } from './components/PreviewPanel';
+import { Dashboard } from './components/Dashboard';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
-import { getAllFilesFromDB, saveFileToDB } from './store/db';
+import { initDB, getAllProjectsFromDB, saveProjectToDB } from './store/db';
 
 let wasmInitialized = false;
 
 function App() {
   const dispatch = useAppDispatch();
   const previewMode = useAppSelector((state) => state.document.previewMode);
+  const screen = useAppSelector((state) => state.document.screen);
 
   // Layout resizing states
   const [sidebarWidth, setSidebarWidth] = useState(240);
@@ -44,40 +46,31 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Load files from IndexedDB on startup
+  // Load projects from IndexedDB on startup
   useEffect(() => {
-    const loadFiles = async () => {
+    const loadProjects = async () => {
       try {
-        const dbFiles = await getAllFilesFromDB();
-        if (dbFiles && dbFiles.length > 0) {
-          dispatch(initializeProject(dbFiles));
-        } else {
-          // Initialize DB with default files if empty
-          const defaultFiles = [
-            {
-              path: 'main.typ',
-              cells: [
-                {
-                  id: 'cell-initial-1',
-                  content: '= Welcome to TypstLab\n\nThis is an interactive document editing platform. You can create cells of Typst markup.\n\n#pagebreak()',
-                  title: 'Welcome Section'
-                },
-                {
-                  id: 'cell-initial-2',
-                  content: '// Edit this Typst code\n#set text(fill: rgb("1c5a99"), size: 14pt)\n\nHello *TypstLab* from WebAssembly! ',
-                  title: 'Styling Example'
-                }
-              ]
-            }
-          ];
-          await Promise.all(defaultFiles.map(f => saveFileToDB(f)));
-          dispatch(initializeProject(defaultFiles));
+        await initDB();
+        let dbProjects = await getAllProjectsFromDB();
+        
+        if (!dbProjects || dbProjects.length === 0) {
+          // Create default project on first load to migrate existing users or start fresh
+          const defaultProj = {
+            id: 'default-project',
+            name: 'Default Project',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          await saveProjectToDB(defaultProj);
+          dbProjects = [defaultProj];
         }
+        
+        dispatch(setProjects(dbProjects));
       } catch (err) {
-        console.error('Error loading files from IndexedDB:', err);
+        console.error('Error loading projects from IndexedDB:', err);
       }
     };
-    loadFiles();
+    loadProjects();
   }, [dispatch]);
 
   // Sidebar drag resizer handler
@@ -144,6 +137,10 @@ function App() {
   const editorWidthExpr = previewMode === 'side-by-side'
     ? `calc((100% - ${actualSidebarWidth}px) * ${editorPercent} / 100 - 3px)`
     : '100%';
+
+  if (screen === 'dashboard') {
+    return <Dashboard />;
+  }
 
   return (
     <div className="app-container">

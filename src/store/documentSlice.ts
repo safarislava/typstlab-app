@@ -1,5 +1,6 @@
 import type {PayloadAction} from '@reduxjs/toolkit';
 import {createSlice} from '@reduxjs/toolkit';
+import type { TypstProject } from './db';
 
 export interface Cell {
   id: string;
@@ -31,35 +32,24 @@ interface DocumentState {
   connectionStatus: 'connected' | 'connecting' | 'offline';
   compilerReady: boolean;
   compilerError: string | null;
+  currentProjectId: string | null;
+  projects: TypstProject[];
+  screen: 'dashboard' | 'editor';
 }
 
 const initialState: DocumentState = {
   title: 'Untitled Typst Document',
-  files: {
-    'main.typ': {
-      path: 'main.typ',
-      isBinary: false,
-      cells: [
-        {
-          id: 'cell-initial-1',
-          content: '= Welcome to TypstLab\n\nThis is an interactive document editing platform. You can create cells of Typst markup.\n\n#pagebreak()',
-          title: 'Welcome Section'
-        },
-        {
-          id: 'cell-initial-2',
-          content: '// Edit this Typst code\n#set text(fill: rgb("1c5a99"), size: 14pt)\n\nHello *TypstLab* from WebAssembly! ',
-          title: 'Styling Example'
-        }
-      ]
-    }
-  },
-  activeFilePath: 'main.typ',
-  activeCellId: 'cell-initial-2',
+  files: {},
+  activeFilePath: '',
+  activeCellId: null,
   previewMode: 'side-by-side',
   isCompiling: false,
   connectionStatus: 'offline',
   compilerReady: false,
-  compilerError: null
+  compilerError: null,
+  currentProjectId: null,
+  projects: [],
+  screen: 'dashboard'
 };
 
 const documentSlice = createSlice({
@@ -144,22 +134,73 @@ const documentSlice = createSlice({
       state.compilerError = action.payload;
     },
     
+    // Projects actions
+    setProjects: (state, action: PayloadAction<TypstProject[]>) => {
+      state.projects = action.payload;
+    },
+    setCurrentProjectId: (state, action: PayloadAction<string | null>) => {
+      state.currentProjectId = action.payload;
+      if (action.payload === null) {
+        state.screen = 'dashboard';
+        state.files = {};
+        state.activeFilePath = '';
+        state.activeCellId = null;
+      } else {
+        state.screen = 'editor';
+      }
+    },
+    addProject: (state, action: PayloadAction<TypstProject>) => {
+      state.projects.push(action.payload);
+    },
+    deleteProject: (state, action: PayloadAction<string>) => {
+      state.projects = state.projects.filter(p => p.id !== action.payload);
+      if (state.currentProjectId === action.payload) {
+        state.currentProjectId = null;
+        state.screen = 'dashboard';
+        state.files = {};
+        state.activeFilePath = '';
+        state.activeCellId = null;
+      }
+    },
+    updateProjectName: (state, action: PayloadAction<{ id: string; name: string }>) => {
+      const { id, name } = action.payload;
+      const project = state.projects.find(p => p.id === id);
+      if (project) {
+        project.name = name;
+        project.updatedAt = Date.now();
+      }
+    },
+    setScreen: (state, action: PayloadAction<'dashboard' | 'editor'>) => {
+      state.screen = action.payload;
+    },
+    
     // Multi-file actions
     initializeProject: (state, action: PayloadAction<TypstFile[]>) => {
       const loadedFiles = action.payload;
+      state.files = {};
       if (loadedFiles.length > 0) {
-        state.files = {};
         loadedFiles.forEach(f => {
           state.files[f.path] = f;
         });
-        
-        const paths = Object.keys(state.files);
-        if (!paths.includes(state.activeFilePath)) {
-          state.activeFilePath = paths[0];
-        }
-        const activeFile = state.files[state.activeFilePath];
-        state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
+      } else {
+        // Initialize default main.typ if empty
+        const defaultPath = 'main.typ';
+        state.files[defaultPath] = {
+          path: defaultPath,
+          isBinary: false,
+          cells: [
+            {
+              id: `cell-default-1`,
+              content: '= Welcome to TypstLab\n\nThis is your new project. Start editing!\n',
+              title: 'Welcome'
+            }
+          ]
+        };
       }
+      const paths = Object.keys(state.files);
+      state.activeFilePath = paths[0] || 'main.typ';
+      const activeFile = state.files[state.activeFilePath];
+      state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
     },
     addFile: (state, action: PayloadAction<{ path: string }>) => {
       const { path } = action.payload;
@@ -263,7 +304,13 @@ export const {
   deleteFile,
   setActiveFilePath,
   addBinaryFile,
-  addTextFileWithContent
+  addTextFileWithContent,
+  setProjects,
+  setCurrentProjectId,
+  addProject,
+  deleteProject,
+  updateProjectName,
+  setScreen
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

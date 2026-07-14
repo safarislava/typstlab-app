@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setTitle, setPreviewMode, setCurrentProjectId, updateProjectName } from '../store/documentSlice';
+import { setTitle, setPreviewMode, updateProjectName } from '../store/documentSlice';
 import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
@@ -53,7 +53,7 @@ export const Header: React.FC = () => {
       <div className="header-left">
         <button 
           className="back-to-dashboard-btn" 
-          onClick={() => dispatch(setCurrentProjectId(null))}
+          onClick={() => { window.location.hash = '#/'; }}
           title="Back to Projects"
         >
           <ArrowLeft size={16} />

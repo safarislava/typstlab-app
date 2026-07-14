@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { addProject, deleteProject, updateProjectName, setCurrentProjectId, initializeProject } from '../store/documentSlice';
-import type { TypstFile } from '../store/documentSlice';
-import { getFilesForProjectFromDB } from '../store/db';
+import { addProject, deleteProject, updateProjectName } from '../store/documentSlice';
 import { Plus, Search, Folder, Calendar, Trash2, Edit2, Check, X, ArrowRight, BookOpen } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
@@ -40,29 +38,8 @@ export const Dashboard: React.FC = () => {
     handleOpenProject(projectId);
   };
 
-  const handleOpenProject = async (projectId: string) => {
-    try {
-      const dbFiles = await getFilesForProjectFromDB(projectId);
-      const reduxFiles: TypstFile[] = dbFiles.map(f => {
-        if (f.isBinary) {
-          return {
-            path: f.path,
-            isBinary: true,
-            binaryData: f.binaryData!
-          };
-        } else {
-          return {
-            path: f.path,
-            isBinary: false,
-            cells: f.cells || []
-          };
-        }
-      });
-      dispatch(initializeProject(reduxFiles));
-      dispatch(setCurrentProjectId(projectId));
-    } catch (err) {
-      console.error('Failed to load project files:', err);
-    }
+  const handleOpenProject = (projectId: string) => {
+    window.location.hash = `#/project/${projectId}`;
   };
 
   const handleStartRename = (e: React.MouseEvent, id: string, name: string) => {
@@ -92,6 +69,9 @@ export const Dashboard: React.FC = () => {
     e.stopPropagation();
     dispatch(deleteProject(id));
     setConfirmDeleteId(null);
+    if (window.location.hash === `#/project/${id}`) {
+      window.location.hash = '#/';
+    }
   };
 
   const handleCancelDelete = (e: React.MouseEvent) => {

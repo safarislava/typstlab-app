@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject } from './store/documentSlice';
+import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditorWorkspace } from './components/EditorWorkspace';
@@ -8,7 +9,7 @@ import { PreviewPanel } from './components/PreviewPanel';
 import { Dashboard } from './components/Dashboard';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
-import { initDB, getAllProjectsFromDB, saveProjectToDB } from './store/db';
+import { initDB, getAllProjectsFromDB, saveProjectToDB, getFilesForProjectFromDB } from './store/db';
 
 let wasmInitialized = false;
 
@@ -46,9 +47,11 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Load projects from IndexedDB on startup
+  // Load projects from IndexedDB and handle hash-based routing on startup
   useEffect(() => {
-    const loadProjects = async () => {
+    let activeCleanup: (() => void) | undefined;
+
+    const loadProjectsAndRoute = async () => {
       try {
         await initDB();
         let dbProjects = await getAllProjectsFromDB();
@@ -66,11 +69,57 @@ function App() {
         }
         
         dispatch(setProjects(dbProjects));
+
+        // Router listener function
+        const handleHashChange = async () => {
+          const hash = window.location.hash;
+          if (hash.startsWith('#/project/')) {
+            const projectId = hash.replace('#/project/', '');
+            try {
+              const dbFiles = await getFilesForProjectFromDB(projectId);
+              const reduxFiles: TypstFile[] = dbFiles.map(f => {
+                if (f.isBinary) {
+                  return {
+                    path: f.path,
+                    isBinary: true,
+                    binaryData: f.binaryData!
+                  };
+                } else {
+                  return {
+                    path: f.path,
+                    isBinary: false,
+                    cells: f.cells || []
+                  };
+                }
+              });
+              dispatch(initializeProject(reduxFiles));
+              dispatch(setCurrentProjectId(projectId));
+            } catch (err) {
+              console.error('Failed to load project files from hash route:', err);
+              window.location.hash = '#/';
+            }
+          } else {
+            dispatch(setCurrentProjectId(null));
+          }
+        };
+
+        window.addEventListener('hashchange', handleHashChange);
+        activeCleanup = () => window.removeEventListener('hashchange', handleHashChange);
+
+        // Perform initial routing based on current hash
+        await handleHashChange();
       } catch (err) {
-        console.error('Error loading projects from IndexedDB:', err);
+        console.error('Error in startup routing logic:', err);
       }
     };
-    loadProjects();
+
+    loadProjectsAndRoute();
+
+    return () => {
+      if (activeCleanup) {
+        activeCleanup();
+      }
+    };
   }, [dispatch]);
 
   // Sidebar drag resizer handler

@@ -12,7 +12,6 @@ export const dbMiddleware: Middleware = store => next => action => {
     type === 'document/deleteCell' ||
     type === 'document/moveCell' ||
     type === 'document/addFile' ||
-    type === 'document/renameFile' ||
     type === 'document/addBinaryFile' ||
     type === 'document/addTextFileWithContent'
   ) {
@@ -21,6 +20,15 @@ export const dbMiddleware: Middleware = store => next => action => {
     const fileToSave = state.files[targetPath];
     if (fileToSave) {
       saveFileToDB(fileToSave).catch(err => console.error('Failed to save to DB:', err));
+    }
+  } else if (type === 'document/renameFile') {
+    const { oldPath, newPath } = (action as any).payload;
+    deleteFileFromDB(oldPath).catch(err => console.error('Failed to delete old file during rename:', err));
+    
+    const state = store.getState().document;
+    const fileToSave = state.files[newPath];
+    if (fileToSave) {
+      saveFileToDB(fileToSave).catch(err => console.error('Failed to save renamed file to DB:', err));
     }
   } else if (type === 'document/deleteFile') {
     const deletedPath = (action as any).payload;

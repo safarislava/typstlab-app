@@ -113,7 +113,7 @@ export const Dashboard: React.FC = () => {
       <main className="dashboard-content">
         {/* Welcome Section */}
         <section className="dashboard-welcome">
-          <h1>Welcome to TypstLab</h1>
+          <h1>Welcome to <span>TypstLab</span></h1>
           <p>Create, compile, and manage Typst documents with interactive markup cells.</p>
         </section>
 
@@ -231,10 +231,7 @@ export const Dashboard: React.FC = () => {
                       </div>
                     </form>
                   ) : (
-                    <>
-                      <h3 className="project-name">{project.name}</h3>
-                      <p className="project-desc">Interactive Typst Document</p>
-                    </>
+                    <h3 className="project-name">{project.name}</h3>
                   )}
                 </div>
 

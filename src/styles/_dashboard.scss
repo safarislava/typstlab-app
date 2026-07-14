@@ -70,20 +70,29 @@
 }
 
 .dashboard-welcome {
+  border-bottom: 1px solid rgba($border-color, 0.5);
+  padding-bottom: 24px;
+
   h1 {
-    font-size: 2.25rem;
+    font-size: 2rem;
     font-weight: 700;
-    margin: 0 0 8px 0;
-    background: linear-gradient(to right, $text-main, #ffffff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px 0;
+    color: $text-main;
+    
+    span {
+      background: linear-gradient(135deg, $accent-color, #00c0d8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
   }
+  
   p {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: $text-muted;
+    font-weight: 400;
     margin: 0;
-    max-width: 600px;
-    line-height: 1.5;
+    line-height: 1.6;
   }
 }
 

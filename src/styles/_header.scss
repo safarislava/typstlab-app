@@ -1,0 +1,215 @@
+@use './variables' as *;
+
+/* App Header Styling (Like typst.app) */
+.app-header {
+  height: 48px;
+  background-color: #1b1c1e;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 100;
+  user-select: none;
+
+  .header-left, .header-center, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .typst-logo-svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .brand-logo-text {
+    font-size: 16px;
+    letter-spacing: -0.2px;
+
+    .logo-typst {
+      font-family: 'Georgia', 'Buenard', serif;
+      font-weight: 700;
+      color: var(--accent-color);
+    }
+
+    .logo-lab {
+      font-family: var(--font-sans), sans-serif;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+  }
+
+  .breadcrumb-separator {
+    color: #404249;
+    font-size: 16px;
+    font-weight: 300;
+  }
+
+  .project-title-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .header-title-input {
+    background: transparent;
+    border: none;
+    font-family: var(--font-sans), sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main);
+    outline: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color var(--transition-fast);
+    max-width: 200px;
+    text-overflow: ellipsis;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    &:focus {
+      background-color: rgba(0, 0, 0, 0.2);
+      box-shadow: 0 0 0 1px var(--accent-color);
+    }
+  }
+
+  /* Compiler & Connection Status */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+
+    .status-icon {
+      flex-shrink: 0;
+    }
+
+    &.compiling {
+      background-color: rgba(35, 157, 173, 0.1);
+      color: var(--accent-color);
+    }
+
+    &.error {
+      background-color: rgba(244, 63, 94, 0.1);
+      color: var(--danger-color);
+    }
+
+    &.ready {
+      background-color: rgba(34, 197, 94, 0.1);
+      color: var(--success-color);
+    }
+
+    &.loading {
+      background-color: rgba(156, 163, 175, 0.1);
+      color: var(--text-muted);
+    }
+  }
+
+  .connection-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .status-indicator {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: var(--text-main);
+      }
+
+      &.online {
+        color: var(--success-color);
+      }
+
+      &.offline {
+        color: var(--warning-color);
+      }
+    }
+  }
+
+  /* Layout toggles and export button */
+  .layout-toggles {
+    display: flex;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    padding: 2px;
+    border-radius: 6px;
+
+    .layout-toggle-btn {
+      background: transparent;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+
+      &:hover {
+        color: var(--text-main);
+      }
+
+      &.active {
+        color: var(--text-main);
+        background-color: var(--bg-tertiary);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      span {
+        display: none;
+        @media (min-width: 768px) {
+          display: inline;
+        }
+      }
+    }
+  }
+
+  .export-pdf-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--font-sans), sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background-color: $accent-hover;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

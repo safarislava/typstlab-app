@@ -1,0 +1,55 @@
+/* Page Layout Structure */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.app-layout {
+  flex: 1;
+  display: flex;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* Premium Resizer Bars */
+.resizer-bar {
+  width: 6px;
+  background-color: transparent;
+  cursor: col-resize;
+  position: relative;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  align-self: stretch;
+
+  &::after {
+    content: '';
+    width: 1px;
+    height: 100%;
+    background-color: var(--border-color);
+    transition: background-color var(--transition-fast), width var(--transition-fast);
+  }
+
+  &:hover, &.active {
+    background-color: rgba(35, 157, 173, 0.05);
+    &::after {
+      width: 2px;
+      background-color: var(--accent-color);
+    }
+  }
+}
+
+body.is-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+
+  /* Prevent rendering canvas/SVGs/objects from swallowing drag events */
+  * {
+    pointer-events: none !important;
+  }
+}

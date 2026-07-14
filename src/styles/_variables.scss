@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+// Colors matching original typst.app
+$bg-primary: #1e1f22;       // Editor background
+$bg-secondary: #18191b;     // Sidebar content / Header background
+$bg-tertiary: #2b2c2f;      // Component background / active toggles
+$border-color: #2a2b2e;     // Border separator color
+$bg-darkest: #0f1011;       // Preview panel container background (makes pages pop!)
+
+$text-main: #e3e4e6;        // Primary light text
+$text-muted: #8e9297;       // Muted/gray text
+$text-dark: #111827;
+
+$accent-color: #239dad;     // Typst Eastern Blue
+$accent-hover: #1d7f8e;
+$accent-light: rgba(35, 157, 173, 0.15);
+$accent-gradient: linear-gradient(135deg, #239dad, #00c0d8);
+
+$success-color: #22c55e;
+$warning-color: #eab308;
+$danger-color: #f43f5e;
+
+// Fonts
+$font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+$font-mono: 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, monospace;
+
+// Shadows & Transitions
+$shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+$shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+$shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+
+$transition-fast: 0.15s ease;
+$transition-normal: 0.25s ease;
+
+:root {
+  --bg-primary: #{$bg-primary};
+  --bg-secondary: #{$bg-secondary};
+  --bg-tertiary: #{$bg-tertiary};
+  --border-color: #{$border-color};
+  
+  --text-main: #{$text-main};
+  --text-muted: #{$text-muted};
+  --text-dark: #{$text-dark};
+  
+  --accent-color: #{$accent-color};
+  --accent-hover: #{$accent-hover};
+  --accent-light: #{$accent-light};
+  --accent-gradient: #{$accent-gradient};
+  
+  --success-color: #{$success-color};
+  --warning-color: #{$warning-color};
+  --danger-color: #{$danger-color};
+  
+  --font-sans: #{$font-sans};
+  --font-mono: #{$font-mono};
+  
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+  
+  --transition-fast: #{$transition-fast};
+  --transition-normal: #{$transition-normal};
+}

@@ -26,7 +26,10 @@ export const CellEditor: React.FC<CellEditorProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const compilerError = useAppSelector((state) => state.document.compilerError);
-  const cells = useAppSelector((state) => state.document.cells);
+  const files = useAppSelector((state) => state.document.files);
+  const activeFilePath = useAppSelector((state) => state.document.activeFilePath);
+  const activeFile = files[activeFilePath];
+  const cells = activeFile ? activeFile.cells : [];
 
   const handleCodeChange = (value: string) => {
     dispatch(updateCellContent({ id, content: value }));

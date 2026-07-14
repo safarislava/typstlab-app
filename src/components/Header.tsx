@@ -7,7 +7,7 @@ import { globalCompilerQueue } from '../lsp/compilerQueue';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { title, cells, previewMode, isCompiling, connectionStatus, compilerReady, compilerError } = useAppSelector(
+  const { title, files, activeFilePath, previewMode, isCompiling, connectionStatus, compilerReady, compilerError } = useAppSelector(
     (state) => state.document
   );
 
@@ -18,9 +18,16 @@ export const Header: React.FC = () => {
   const handleExportPDF = async () => {
     if (!compilerReady) return;
     try {
-      const fullSource = cells.map(cell => cell.content).join('\n\n');
+      // Sync all files to the compiler virtual file system (VFS)
+      await Promise.all(
+        Object.values(files).map(async (file) => {
+          const content = file.cells.map(c => c.content).join('\n\n');
+          await $typst.addSource(`/${file.path}`, content);
+        })
+      );
+
       const pdfBytes = await globalCompilerQueue.run(() =>
-        $typst.pdf({ mainContent: fullSource })
+        $typst.pdf({ mainFilePath: `/${activeFilePath}` })
       );
       if (pdfBytes) {
         const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });

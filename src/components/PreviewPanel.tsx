@@ -131,7 +131,7 @@ function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
 
 export const PreviewPanel: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { cells, isCompiling, compilerReady, compilerError } = useAppSelector(
+  const { files, activeFilePath, isCompiling, compilerReady, compilerError } = useAppSelector(
     (state) => state.document
   );
   
@@ -144,20 +144,18 @@ export const PreviewPanel: React.FC = () => {
     const compileTimer = setTimeout(async () => {
       dispatch(setIsCompiling(true));
 
-      // Concatenate all cells to form the full document content
-      const fullSource = cells.map(cell => cell.content).join('\n\n');
-
-      if (!fullSource.trim()) {
-        setRenderedPages([]);
-        dispatch(setCompilerError(null));
-        dispatch(setIsCompiling(false));
-        return;
-      }
-
       try {
+        // Sync all files to the compiler virtual file system (VFS)
+        await Promise.all(
+          Object.values(files).map(async (file) => {
+            const content = file.cells.map(c => c.content).join('\n\n');
+            await $typst.addSource(`/${file.path}`, content);
+          })
+        );
+
         // Compile and render directly to SVG in a single WASM call to avoid borrow checker errors
         const result = await globalCompilerQueue.run(async () => {
-          return await $typst.svg({ mainContent: fullSource });
+          return await $typst.svg({ mainFilePath: `/${activeFilePath}` });
         });
 
         if (result !== null) {
@@ -174,7 +172,7 @@ export const PreviewPanel: React.FC = () => {
     }, 500); // 500ms debounce to prevent constant compiling on keystroke
 
     return () => clearTimeout(compileTimer);
-  }, [cells, compilerReady, dispatch]);
+  }, [files, activeFilePath, compilerReady, dispatch]);
 
   return (
     <section className="preview-panel">

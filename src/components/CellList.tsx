@@ -5,7 +5,9 @@ import { CellContainer } from './CellContainer';
 import { Plus } from 'lucide-react';
 
 export const CellList: React.FC = () => {
-  const { cells, activeCellId } = useAppSelector((state) => state.document);
+  const { files, activeFilePath, activeCellId } = useAppSelector((state) => state.document);
+  const activeFile = files[activeFilePath];
+  const cells = activeFile ? activeFile.cells : [];
   const dispatch = useAppDispatch();
 
   const handleAddCell = (index: number) => {

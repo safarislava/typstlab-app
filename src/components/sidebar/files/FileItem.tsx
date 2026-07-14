@@ -1,0 +1,106 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { FileText, Trash2, Edit } from 'lucide-react';
+import type { TypstFile } from '../../../store/documentSlice';
+
+interface FileItemProps {
+  file: TypstFile;
+  isActive: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onRename: (newName: string) => void;
+  exists: (name: string) => boolean;
+}
+
+export const FileItem: React.FC<FileItemProps> = ({
+  file,
+  isActive,
+  onSelect,
+  onDelete,
+  onRename,
+  exists
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(file.path);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  const handleStartRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditName(file.path);
+  };
+
+  const handleSaveRename = () => {
+    let name = editName.trim();
+    if (!name || name === file.path) {
+      setIsEditing(false);
+      return;
+    }
+    if (!name.endsWith('.typ')) {
+      name += '.typ';
+    }
+    if (name !== file.path && exists(name)) {
+      alert('A file with this name already exists.');
+      return;
+    }
+    onRename(name);
+    setIsEditing(false);
+  };
+
+  return (
+    <div
+      className={`file-item ${isActive ? 'active' : ''} ${isEditing ? 'editing' : ''}`}
+      onClick={() => !isEditing && onSelect()}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+        <FileText
+          size={16}
+          className="file-icon"
+        />
+        {isEditing ? (
+          <input
+            ref={editInputRef}
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={handleSaveRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveRename();
+              if (e.key === 'Escape') setIsEditing(false);
+            }}
+            className="file-rename-input"
+          />
+        ) : (
+          <span className="file-name">
+            {file.path}
+          </span>
+        )}
+      </div>
+
+      {!isEditing && (
+        <div className="file-actions">
+          <button
+            onClick={handleStartRename}
+            title="Rename file"
+          >
+            <Edit size={12} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            title="Delete file"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, initializeProject } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { PreviewPanel } from './components/PreviewPanel';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
+import { getAllFilesFromDB, saveFileToDB } from './store/db';
 
 let wasmInitialized = false;
 
@@ -41,6 +42,42 @@ function App() {
       }
     };
     initWasm();
+  }, [dispatch]);
+
+  // Load files from IndexedDB on startup
+  useEffect(() => {
+    const loadFiles = async () => {
+      try {
+        const dbFiles = await getAllFilesFromDB();
+        if (dbFiles && dbFiles.length > 0) {
+          dispatch(initializeProject(dbFiles));
+        } else {
+          // Initialize DB with default files if empty
+          const defaultFiles = [
+            {
+              path: 'main.typ',
+              cells: [
+                {
+                  id: 'cell-initial-1',
+                  content: '= Welcome to TypstLab\n\nThis is an interactive document editing platform. You can create cells of Typst markup.\n\n#pagebreak()',
+                  title: 'Welcome Section'
+                },
+                {
+                  id: 'cell-initial-2',
+                  content: '// Edit this Typst code\n#set text(fill: rgb("1c5a99"), size: 14pt)\n\nHello *TypstLab* from WebAssembly! ',
+                  title: 'Styling Example'
+                }
+              ]
+            }
+          ];
+          await Promise.all(defaultFiles.map(f => saveFileToDB(f)));
+          dispatch(initializeProject(defaultFiles));
+        }
+      } catch (err) {
+        console.error('Error loading files from IndexedDB:', err);
+      }
+    };
+    loadFiles();
   }, [dispatch]);
 
   // Sidebar drag resizer handler

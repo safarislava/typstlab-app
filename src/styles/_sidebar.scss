@@ -67,6 +67,25 @@
     letter-spacing: 0.5px;
     color: var(--text-muted);
     margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .create-file-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      border-radius: 4px;
+      transition: color var(--transition-fast);
+
+      &:hover {
+        color: var(--text-main);
+      }
+    }
   }
 
   .sidebar-pane-footer {
@@ -76,31 +95,162 @@
     color: var(--text-muted);
   }
 
+  /* File Creation Inline Form */
+  .file-create-input-container {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+
+    .file-create-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+      transition: border-color var(--transition-fast);
+
+      &:focus {
+        border-color: var(--accent-color);
+      }
+    }
+
+    .file-create-btn {
+      background: var(--accent-color);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      transition: background-color var(--transition-fast);
+
+      &:hover {
+        background-color: var(--accent-hover);
+      }
+    }
+
+    .file-create-cancel-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-main);
+      }
+    }
+  }
+
   /* File Tree Section */
   .file-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
     .file-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-main);
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-color);
-      margin-bottom: 8px;
+      justify-content: space-between;
       cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background: transparent;
+      border: 1px solid transparent;
+      transition: background var(--transition-fast);
+
+      &.editing {
+        cursor: default;
+      }
+
+      &.active {
+        background: rgba(35, 157, 173, 0.1);
+
+        .file-icon {
+          color: var(--accent-color) !important;
+        }
+
+        .file-name {
+          color: var(--text-main) !important;
+        }
+      }
 
       .file-icon {
-        color: var(--accent-color);
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+
+      .file-name {
+        font-size: 13px;
+        color: var(--text-muted);
+        transition: color var(--transition-fast);
+      }
+
+      .file-rename-input {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--accent-color);
+        border-radius: 3px;
+        color: var(--text-main);
+        font-size: 13px;
+        padding: 2px 4px;
+        outline: none;
+        width: 100%;
+      }
+
+      .file-actions {
+        opacity: 0;
+        transition: opacity var(--transition-fast);
+        display: flex;
+        gap: 4px;
+
+        button {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 2px;
+          display: flex;
+          align-items: center;
+          transition: color var(--transition-fast), transform var(--transition-fast);
+
+          &:hover {
+            color: var(--text-main) !important;
+            transform: scale(1.15);
+          }
+        }
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.02);
+
+        &.active {
+          background: rgba(35, 157, 173, 0.12);
+        }
+
+        .file-actions {
+          opacity: 1;
+        }
       }
     }
 
     .file-sub-tree {
-      margin-left: 12px;
+      margin-left: 16px;
       border-left: 1px solid var(--border-color);
       padding-left: 8px;
+      margin-top: 4px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -109,13 +259,13 @@
     .cell-link-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 8px;
-      border-radius: 4px;
+      gap: 6px;
+      padding: 4px 6px;
+      border-radius: 3px;
+      cursor: pointer;
       font-size: 11px;
       color: var(--text-muted);
-      cursor: pointer;
-      transition: var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast);
 
       &:hover {
         color: var(--text-main);
@@ -125,6 +275,10 @@
       &.active {
         color: var(--accent-color);
         background-color: rgba(35, 157, 173, 0.08);
+
+        .cell-bullet {
+          background-color: var(--accent-color);
+        }
       }
 
       .cell-bullet {
@@ -132,10 +286,8 @@
         height: 4px;
         border-radius: 50%;
         background-color: var(--text-muted);
-      }
-
-      &.active .cell-bullet {
-        background-color: var(--accent-color);
+        flex-shrink: 0;
+        transition: background-color var(--transition-fast);
       }
 
       .cell-link-text {

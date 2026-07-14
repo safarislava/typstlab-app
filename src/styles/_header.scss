@@ -32,15 +32,14 @@
   .brand-logo-text {
     font-size: 16px;
     letter-spacing: -0.2px;
+    font-family: 'Georgia', 'Buenard', serif;
 
     .logo-typst {
-      font-family: 'Georgia', 'Buenard', serif;
       font-weight: 700;
       color: var(--accent-color);
     }
 
     .logo-lab {
-      font-family: var(--font-sans), sans-serif;
       font-weight: 500;
       color: var(--text-main);
     }

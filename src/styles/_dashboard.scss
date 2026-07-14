@@ -1,0 +1,694 @@
+@use 'variables' as *;
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: $bg-primary;
+  color: $text-main;
+  font-family: $font-sans;
+}
+
+.dashboard-header {
+  background-color: $bg-secondary;
+  border-bottom: 1px solid $border-color;
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  
+  .dashboard-header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+
+
+.new-project-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, $accent-color, #00c0d8);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(35, 157, 173, 0.25);
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(35, 157, 173, 0.4);
+    opacity: 0.95;
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.dashboard-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.dashboard-welcome {
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    background: linear-gradient(to right, $text-main, #ffffff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  p {
+    font-size: 1.1rem;
+    color: $text-muted;
+    margin: 0;
+    max-width: 600px;
+    line-height: 1.5;
+  }
+}
+
+.dashboard-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  
+  .search-box {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+    min-width: 250px;
+    
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $text-muted;
+      pointer-events: none;
+    }
+    
+    input {
+      width: 100%;
+      background-color: $bg-secondary;
+      border: 1px solid $border-color;
+      border-radius: 8px;
+      padding: 10px 16px 10px 38px;
+      color: $text-main;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+      
+      &:focus {
+        outline: none;
+        border-color: $accent-color;
+        box-shadow: 0 0 0 2px rgba(35, 157, 173, 0.15);
+        background-color: $bg-primary;
+      }
+    }
+    
+    .clear-search {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: $text-muted;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 4px;
+      
+      &:hover {
+        background-color: $bg-tertiary;
+        color: $text-main;
+      }
+    }
+  }
+  
+  .project-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: $text-muted;
+    font-size: 0.875rem;
+    background-color: $bg-secondary;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid $border-color;
+  }
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.project-card {
+  background-color: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: translateY(-4px);
+    border-color: rgba($accent-color, 0.5);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba($accent-color, 0.1);
+    
+    .project-icon-wrapper {
+      background-color: rgba($accent-color, 0.15);
+      color: $accent-color;
+    }
+    
+    .open-indicator {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .project-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  
+  .project-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background-color: $bg-tertiary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $text-muted;
+    transition: all 0.2s ease;
+  }
+  
+  .project-card-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    
+    .card-action-btn {
+      background-color: $bg-tertiary;
+      border: 1px solid $border-color;
+      color: $text-muted;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      
+      &:hover {
+        background-color: $bg-primary;
+        color: $text-main;
+        border-color: $text-muted;
+      }
+      
+      &.delete-btn:hover {
+        background-color: rgba($danger-color, 0.15);
+        color: $danger-color;
+        border-color: rgba($danger-color, 0.4);
+      }
+    }
+  }
+  
+  &:hover .project-card-actions {
+    opacity: 1;
+  }
+  
+  .project-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-bottom: 16px;
+    
+    .project-name {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: $text-main;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .project-desc {
+      font-size: 0.825rem;
+      color: $text-muted;
+      margin: 0;
+    }
+  }
+  
+  .project-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba($border-color, 0.5);
+    padding-top: 12px;
+    font-size: 0.75rem;
+    color: $text-muted;
+    
+    .project-date {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .open-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: $accent-color;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: all 0.2s ease;
+    }
+  }
+  
+  // Create project card styling
+  &.create-card {
+    border-style: dashed;
+    border-width: 2px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background-color: transparent;
+    
+    .create-card-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .plus-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: rgba($accent-color, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $accent-color;
+      transition: all 0.2s ease;
+    }
+    
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 8px 0 0 0;
+      color: $text-main;
+    }
+    
+    p {
+      font-size: 0.8rem;
+      color: $text-muted;
+      margin: 0;
+    }
+    
+    &:hover {
+      background-color: rgba($accent-color, 0.02);
+      border-color: $accent-color;
+      
+      .plus-circle {
+        transform: scale(1.1);
+        background-color: $accent-color;
+        color: white;
+      }
+    }
+  }
+}
+
+// Rename form
+.rename-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  
+  .rename-input {
+    flex: 1;
+    background-color: $bg-primary;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: $text-main;
+    font-size: 0.9rem;
+    
+    &:focus {
+      outline: none;
+      border-color: $accent-color;
+    }
+  }
+  
+  .rename-actions {
+    display: flex;
+    gap: 4px;
+    
+    button {
+      background-color: $bg-tertiary;
+      border: 1px solid $border-color;
+      color: $text-muted;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      
+      &:hover {
+        background-color: $bg-primary;
+        color: $text-main;
+      }
+      
+      &:first-child:hover {
+        color: $success-color;
+        border-color: rgba($success-color, 0.4);
+      }
+    }
+  }
+}
+
+// Delete confirm card style
+.project-card.confirm-delete-state {
+  border-color: rgba($danger-color, 0.4);
+}
+
+.delete-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba($bg-secondary, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  z-index: 10;
+  
+  p {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $text-main;
+    margin: 0 0 12px 0;
+  }
+  
+  .overlay-actions {
+    display: flex;
+    gap: 8px;
+    
+    button {
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+    }
+    
+    .btn-confirm-delete {
+      background-color: $danger-color;
+      color: white;
+      
+      &:hover {
+        opacity: 0.9;
+      }
+    }
+    
+    .btn-cancel {
+      background-color: $bg-tertiary;
+      color: $text-muted;
+      border: 1px solid $border-color;
+      
+      &:hover {
+        background-color: $bg-primary;
+        color: $text-main;
+      }
+    }
+  }
+}
+
+// Empty state
+.dashboard-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background-color: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  
+  .empty-icon {
+    color: $text-muted;
+    opacity: 0.5;
+  }
+  
+  h3 {
+    margin: 8px 0 0 0;
+    font-size: 1.25rem;
+    color: $text-main;
+  }
+  
+  p {
+    margin: 0;
+    color: $text-muted;
+    max-width: 320px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  
+  button {
+    margin-top: 8px;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, $accent-color, #00c0d8);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    
+    &:hover {
+      opacity: 0.95;
+    }
+  }
+  
+  .btn-secondary {
+    background-color: $bg-tertiary;
+    color: $text-main;
+    border: 1px solid $border-color;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    
+    &:hover {
+      background-color: $bg-primary;
+    }
+  }
+}
+
+// Modals
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background-color: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 440px;
+  overflow: hidden;
+  box-shadow: $shadow-lg;
+  animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba($border-color, 0.5);
+    
+    h2 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+    
+    .close-modal {
+      background: none;
+      border: none;
+      color: $text-muted;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 4px;
+      
+      &:hover {
+        background-color: $bg-tertiary;
+        color: $text-main;
+      }
+    }
+  }
+  
+  .modal-body {
+    padding: 20px;
+    
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: $text-muted;
+      margin-bottom: 8px;
+    }
+    
+    input {
+      width: 100%;
+      background-color: $bg-primary;
+      border: 1px solid $border-color;
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: $text-main;
+      font-size: 0.9rem;
+      
+      &:focus {
+        outline: none;
+        border-color: $accent-color;
+        box-shadow: 0 0 0 2px rgba(35, 157, 173, 0.1);
+      }
+    }
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    background-color: rgba($bg-primary, 0.4);
+    border-top: 1px solid rgba($border-color, 0.3);
+    
+    button {
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    
+    .btn-cancel {
+      background-color: transparent;
+      border: 1px solid $border-color;
+      color: $text-muted;
+      
+      &:hover {
+        background-color: $bg-tertiary;
+        color: $text-main;
+      }
+    }
+    
+    .btn-submit-primary {
+      background: linear-gradient(135deg, $accent-color, #00c0d8);
+      color: white;
+      border: none;
+      
+      &:hover {
+        opacity: 0.95;
+      }
+    }
+  }
+}
+
+// Back to Dashboard button in Header
+.back-to-dashboard-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: $text-muted;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: $bg-tertiary;
+    color: $text-main;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

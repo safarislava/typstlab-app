@@ -1,33 +1,43 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setTitle, setPreviewMode } from '../store/documentSlice';
-import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff } from 'lucide-react';
+import { setTitle, setPreviewMode, updateProjectName } from '../store/documentSlice';
+import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
+import { syncFilesToVfs } from '../utils/vfsSync';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { title, cells, previewMode, isCompiling, connectionStatus, compilerReady, compilerError } = useAppSelector(
+  const { currentProjectId, projects, title, files, activeFilePath, previewMode, isCompiling, connectionStatus, compilerReady, compilerError } = useAppSelector(
     (state) => state.document
   );
 
+  const activeProject = projects.find(p => p.id === currentProjectId);
+  const projectTitle = activeProject ? activeProject.name : title;
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch(setTitle(e.target.value));
+    if (currentProjectId) {
+      dispatch(updateProjectName({ id: currentProjectId, name: e.target.value }));
+    } else {
+      dispatch(setTitle(e.target.value));
+    }
   };
 
   const handleExportPDF = async () => {
     if (!compilerReady) return;
     try {
-      const fullSource = cells.map(cell => cell.content).join('\n\n');
+      // Sync all files to the compiler virtual file system (VFS)
+      await syncFilesToVfs(files);
+
       const pdfBytes = await globalCompilerQueue.run(() =>
-        $typst.pdf({ mainContent: fullSource })
+        $typst.pdf({ mainFilePath: `/${activeFilePath}` })
       );
       if (pdfBytes) {
         const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${title.toLowerCase().replace(/\s+/g, '_') || 'document'}.pdf`;
+        a.download = `${projectTitle.toLowerCase().replace(/\s+/g, '_') || 'document'}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -41,6 +51,17 @@ export const Header: React.FC = () => {
   return (
     <header className="app-header">
       <div className="header-left">
+        <button 
+          className="back-to-dashboard-btn" 
+          onClick={() => { window.location.hash = '#/'; }}
+          title="Back to Projects"
+        >
+          <ArrowLeft size={16} />
+          <span>Projects</span>
+        </button>
+
+        <div className="breadcrumb-separator">/</div>
+
         <div className="brand-container">
           <div className="brand-logo-text">
             <span className="logo-typst">typst</span>
@@ -54,7 +75,7 @@ export const Header: React.FC = () => {
           <input
             type="text"
             className="header-title-input"
-            value={title}
+            value={projectTitle}
             onChange={handleTitleChange}
             placeholder="Untitled Document"
           />

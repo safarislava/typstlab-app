@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject } from './store/documentSlice';
+import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { PreviewPanel } from './components/PreviewPanel';
+import { Dashboard } from './components/Dashboard';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
+import { initDB, getAllProjectsFromDB, saveProjectToDB, getFilesForProjectFromDB } from './store/db';
 
 let wasmInitialized = false;
 
 function App() {
   const dispatch = useAppDispatch();
   const previewMode = useAppSelector((state) => state.document.previewMode);
+  const screen = useAppSelector((state) => state.document.screen);
 
   // Layout resizing states
   const [sidebarWidth, setSidebarWidth] = useState(240);
@@ -41,6 +45,81 @@ function App() {
       }
     };
     initWasm();
+  }, [dispatch]);
+
+  // Load projects from IndexedDB and handle hash-based routing on startup
+  useEffect(() => {
+    let activeCleanup: (() => void) | undefined;
+
+    const loadProjectsAndRoute = async () => {
+      try {
+        await initDB();
+        let dbProjects = await getAllProjectsFromDB();
+        
+        if (!dbProjects || dbProjects.length === 0) {
+          // Create default project on first load to migrate existing users or start fresh
+          const defaultProj = {
+            id: 'default-project',
+            name: 'Default Project',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          await saveProjectToDB(defaultProj);
+          dbProjects = [defaultProj];
+        }
+        
+        dispatch(setProjects(dbProjects));
+
+        // Router listener function
+        const handleHashChange = async () => {
+          const hash = window.location.hash;
+          if (hash.startsWith('#/project/')) {
+            const projectId = hash.replace('#/project/', '');
+            try {
+              const dbFiles = await getFilesForProjectFromDB(projectId);
+              const reduxFiles: TypstFile[] = dbFiles.map(f => {
+                if (f.isBinary) {
+                  return {
+                    path: f.path,
+                    isBinary: true,
+                    binaryData: f.binaryData!
+                  };
+                } else {
+                  return {
+                    path: f.path,
+                    isBinary: false,
+                    cells: f.cells || []
+                  };
+                }
+              });
+              dispatch(initializeProject(reduxFiles));
+              dispatch(setCurrentProjectId(projectId));
+            } catch (err) {
+              console.error('Failed to load project files from hash route:', err);
+              window.location.hash = '#/';
+            }
+          } else {
+            dispatch(setCurrentProjectId(null));
+          }
+        };
+
+        window.addEventListener('hashchange', handleHashChange);
+        activeCleanup = () => window.removeEventListener('hashchange', handleHashChange);
+
+        // Perform initial routing based on current hash
+        await handleHashChange();
+      } catch (err) {
+        console.error('Error in startup routing logic:', err);
+      }
+    };
+
+    loadProjectsAndRoute();
+
+    return () => {
+      if (activeCleanup) {
+        activeCleanup();
+      }
+    };
   }, [dispatch]);
 
   // Sidebar drag resizer handler
@@ -107,6 +186,10 @@ function App() {
   const editorWidthExpr = previewMode === 'side-by-side'
     ? `calc((100% - ${actualSidebarWidth}px) * ${editorPercent} / 100 - 3px)`
     : '100%';
+
+  if (screen === 'dashboard') {
+    return <Dashboard />;
+  }
 
   return (
     <div className="app-container">

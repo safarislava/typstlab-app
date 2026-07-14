@@ -1,7 +1,7 @@
 import React from 'react';
-import { FolderOpen, List, Cpu, Settings } from 'lucide-react';
+import { FolderOpen, Cpu, Settings } from 'lucide-react';
 
-export type SidebarTab = 'files' | 'outline' | 'compiler' | 'settings';
+export type SidebarTab = 'files' | 'compiler' | 'settings';
 
 interface SidebarDockProps {
   activeTab: SidebarTab | null;
@@ -25,13 +25,6 @@ export const SidebarDock: React.FC<SidebarDockProps> = ({ activeTab, setActiveTa
         title="Files"
       >
         <FolderOpen size={20} />
-      </button>
-      <button
-        className={`dock-item ${activeTab === 'outline' ? 'active' : ''}`}
-        onClick={() => handleTabClick('outline')}
-        title="Outline"
-      >
-        <List size={20} />
       </button>
       <button
         className={`dock-item ${activeTab === 'compiler' ? 'active' : ''}`}

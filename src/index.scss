@@ -1222,3 +1222,258 @@ body.is-resizing {
   }
 }
 
+/* Word Ribbon Styling */
+.word-ribbon {
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  font-family: var(--font-sans), sans-serif;
+  position: relative;
+  z-index: 200;
+
+  .ribbon-panel {
+    display: flex;
+    align-items: center;
+    padding: 4px 16px;
+    height: 44px; /* Super compact height */
+    gap: 16px;
+    overflow: visible;
+    background: transparent;
+    position: relative;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .ribbon-groups {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      height: 100%;
+    }
+
+    .ribbon-group {
+      display: flex;
+      align-items: center;
+      position: relative;
+
+      .group-content {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+    }
+
+    .ribbon-group-separator {
+      width: 1px;
+      height: 24px;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .ribbon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+
+      // Large custom symbols for math options
+      span:first-child:not(svg) {
+        font-size: 15px;
+        font-weight: bold;
+        line-height: 15px;
+        height: 15px;
+        color: rgba(255, 255, 255, 0.7);
+        transition: color 0.15s ease;
+      }
+
+      svg {
+        color: rgba(255, 255, 255, 0.7);
+        transition: color 0.15s ease, transform 0.15s ease;
+      }
+
+      &.dropdown-trigger {
+        width: 44px;
+        min-width: 44px;
+        display: flex;
+        flex-direction: row;
+        gap: 3px;
+
+        .chevron-icon {
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 1px;
+        }
+      }
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: var(--text-main);
+
+        svg {
+          color: var(--text-main);
+          transform: translateY(-1px);
+        }
+
+        span:first-child:not(svg) {
+          color: var(--text-main);
+        }
+      }
+
+      &:active, &.active {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: var(--text-main);
+
+        span:first-child:not(svg) {
+          color: var(--text-main);
+        }
+      }
+    }
+
+    .ribbon-dropdown-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 999;
+      cursor: default;
+      background: transparent;
+    }
+
+    .ribbon-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background-color: #1a1b1e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      padding: 6px;
+      z-index: 1000;
+      display: grid;
+      gap: 4px;
+
+      &.cols-6 {
+        grid-template-columns: repeat(6, 1fr);
+        min-width: 250px;
+      }
+
+      &.cols-4 {
+        grid-template-columns: repeat(4, 1fr);
+        min-width: 170px;
+      }
+
+      .dropdown-symbol-item {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        width: 32px;
+        height: 32px;
+
+        .symbol-char {
+          font-size: 15px;
+          font-weight: bold;
+          color: var(--accent-color);
+          line-height: 15px;
+          transition: color 0.15s ease, transform 0.15s ease;
+        }
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.05);
+          color: #ffffff;
+          
+          .symbol-char {
+            transform: scale(1.1);
+          }
+        }
+      }
+    }
+
+    /* Table grid size selector dropdown */
+    .table-selector-popup {
+      display: flex !important;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 130px;
+      padding: 8px 10px;
+
+      .table-grid-header {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-main);
+        text-align: center;
+        margin-bottom: 2px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: 4px;
+      }
+
+      .table-grid-interactive {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        align-items: center;
+        padding-top: 2px;
+      }
+
+      .table-grid-row {
+        display: flex;
+        gap: 3px;
+      }
+
+      .table-grid-cell {
+        width: 16px;
+        height: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background-color: rgba(255, 255, 255, 0.02);
+        cursor: pointer;
+        border-radius: 2px;
+        transition: background-color 0.1s ease, border-color 0.1s ease;
+
+        &.active {
+          background-color: rgba(0, 219, 222, 0.25);
+          border-color: #00dbde;
+          box-shadow: 0 0 3px rgba(0, 219, 222, 0.2);
+        }
+      }
+    }
+
+    .ribbon-tip {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 10px;
+      color: var(--text-muted);
+      max-width: 250px;
+
+      .tip-icon {
+        color: var(--accent-color);
+        flex-shrink: 0;
+      }
+    }
+  }
+}
+

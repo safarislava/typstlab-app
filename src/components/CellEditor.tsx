@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
+import { EditorView } from '@codemirror/view';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateCellContent, updateCellTitle } from '../store/documentSlice';
 import { useLspExtensions } from '../lsp/lspManager';
@@ -77,7 +78,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
           value={content}
           height="auto"
           theme={intellijDarkTheme}
-          extensions={[typstHighlightLanguage, ...lspExtensions]}
+          extensions={[typstHighlightLanguage, EditorView.lineWrapping, ...lspExtensions]}
           onChange={handleCodeChange}
           onFocus={handleFocus}
           onCreateEditor={(view) => {

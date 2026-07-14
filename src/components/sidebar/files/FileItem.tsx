@@ -41,9 +41,15 @@ export const FileItem: React.FC<FileItemProps> = ({
       setIsEditing(false);
       return;
     }
-    if (!name.endsWith('.typ')) {
-      name += '.typ';
+    
+    // Auto-append original extension if the user did not specify any extension (no dot in name)
+    if (!name.includes('.')) {
+      const dotIndex = file.path.lastIndexOf('.');
+      if (dotIndex !== -1) {
+        name += file.path.substring(dotIndex);
+      }
     }
+    
     if (name !== file.path && exists(name)) {
       alert('A file with this name already exists.');
       return;

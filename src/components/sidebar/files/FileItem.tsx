@@ -56,40 +56,8 @@ export const FileItem: React.FC<FileItemProps> = ({
     <div
       className={`file-item ${isActive ? 'active' : ''} ${isEditing ? 'editing' : ''}`}
       onClick={() => !isEditing && onSelect()}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-        {file.isBinary ? (
-          <FileImage
-            size={16}
-            className="file-icon"
-            style={{ color: 'var(--accent-color)' }}
-          />
-        ) : (
-          <FileText
-            size={16}
-            className="file-icon"
-          />
-        )}
-        {isEditing ? (
-          <input
-            ref={editInputRef}
-            type="text"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onBlur={handleSaveRename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveRename();
-              if (e.key === 'Escape') setIsEditing(false);
-            }}
-            className="file-rename-input"
-          />
-        ) : (
-          <span className="file-name">
-            {file.path}
-          </span>
-        )}
-      </div>
-
       {!isEditing && (
         <div className="file-actions">
           <button
@@ -109,6 +77,40 @@ export const FileItem: React.FC<FileItemProps> = ({
           </button>
         </div>
       )}
+
+      {file.isBinary ? (
+        <FileImage
+          size={16}
+          className="file-icon"
+          style={{ color: 'var(--accent-color)' }}
+        />
+      ) : (
+        <FileText
+          size={16}
+          className="file-icon"
+        />
+      )}
+
+      <div style={{ marginLeft: '8px', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+        {isEditing ? (
+          <input
+            ref={editInputRef}
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={handleSaveRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveRename();
+              if (e.key === 'Escape') setIsEditing(false);
+            }}
+            className="file-rename-input"
+          />
+        ) : (
+          <span className="file-name">
+            {file.path}
+          </span>
+        )}
+      </div>
     </div>
   );
 };

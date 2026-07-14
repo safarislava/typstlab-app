@@ -163,7 +163,7 @@
     .file-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       cursor: pointer;
       padding: 6px 8px;
       border-radius: 4px;
@@ -196,6 +196,10 @@
         font-size: 13px;
         color: var(--text-muted);
         transition: color var(--transition-fast);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
       }
 
       .file-rename-input {
@@ -210,10 +214,13 @@
       }
 
       .file-actions {
-        opacity: 0;
-        transition: opacity var(--transition-fast);
         display: flex;
         gap: 4px;
+        width: 0;
+        opacity: 0;
+        margin-right: 0;
+        overflow: hidden;
+        transition: width var(--transition-fast), opacity var(--transition-fast), margin-right var(--transition-fast);
 
         button {
           background: transparent;
@@ -240,7 +247,9 @@
         }
 
         .file-actions {
+          width: 36px;
           opacity: 1;
+          margin-right: 6px;
         }
       }
     }

@@ -98,18 +98,22 @@
   /* File Creation Inline Form */
   .file-create-input-container {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     margin-bottom: 12px;
+    align-items: center;
 
     .file-create-input {
       flex: 1;
+      min-width: 0;
       background: rgba(0, 0, 0, 0.2);
       border: 1px solid var(--border-color);
       border-radius: 4px;
       color: var(--text-main);
       font-size: 12px;
       padding: 4px 8px;
+      height: 24px;
       outline: none;
+      box-sizing: border-box;
       transition: border-color var(--transition-fast);
 
       &:focus {
@@ -117,18 +121,22 @@
       }
     }
 
-    .file-create-btn {
-      background: var(--accent-color);
+    button {
       border: none;
       border-radius: 4px;
-      color: white;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
-      transition: background-color var(--transition-fast);
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+    }
+
+    .file-create-btn {
+      background: var(--accent-color);
+      color: white;
 
       &:hover {
         background-color: var(--accent-hover);
@@ -137,16 +145,7 @@
 
     .file-create-cancel-btn {
       background: rgba(255, 255, 255, 0.05);
-      border: none;
-      border-radius: 4px;
       color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      transition: background-color var(--transition-fast), color var(--transition-fast);
 
       &:hover {
         background-color: rgba(255, 255, 255, 0.1);

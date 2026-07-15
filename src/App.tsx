@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { PreviewPanel } from './components/PreviewPanel';
 import { Dashboard } from './components/Dashboard';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
-import { initDB, getAllProjectsFromDB, saveProjectToDB, getFilesForProjectFromDB } from './store/db';
+import { initDB, saveProjectToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
+import type { TypstProject } from './store/db';
 
 let wasmInitialized = false;
 
@@ -17,6 +20,8 @@ function App() {
   const dispatch = useAppDispatch();
   const previewMode = useAppSelector((state) => state.document.previewMode);
   const screen = useAppSelector((state) => state.document.screen);
+  const currentUser = useAppSelector((state) => state.document.currentUser);
+  const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
 
   // Layout resizing states
   const [sidebarWidth, setSidebarWidth] = useState(240);
@@ -47,80 +52,168 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Load projects from IndexedDB and handle hash-based routing on startup
+  // Poll backend (WebSocket LSP) availability to update online/offline connectionStatus
   useEffect(() => {
-    let activeCleanup: (() => void) | undefined;
+    let checkInterval: any;
+    let isChecking = false;
 
-    const loadProjectsAndRoute = async () => {
+    const checkBackend = () => {
+      if (isChecking) return;
+      isChecking = true;
+
       try {
-        await initDB();
-        let dbProjects = await getAllProjectsFromDB();
+        const socket = new WebSocket('ws://localhost:8080/lsp');
         
-        if (!dbProjects || dbProjects.length === 0) {
-          // Create default project on first load to migrate existing users or start fresh
-          const defaultProj = {
-            id: 'default-project',
-            name: 'Default Project',
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          };
-          await saveProjectToDB(defaultProj);
-          dbProjects = [defaultProj];
-        }
-        
-        dispatch(setProjects(dbProjects));
-
-        // Router listener function
-        const handleHashChange = async () => {
-          const hash = window.location.hash;
-          if (hash.startsWith('#/project/')) {
-            const projectId = hash.replace('#/project/', '');
-            try {
-              const dbFiles = await getFilesForProjectFromDB(projectId);
-              const reduxFiles: TypstFile[] = dbFiles.map(f => {
-                if (f.isBinary) {
-                  return {
-                    path: f.path,
-                    isBinary: true,
-                    binaryData: f.binaryData!
-                  };
-                } else {
-                  return {
-                    path: f.path,
-                    isBinary: false,
-                    cells: f.cells || []
-                  };
-                }
-              });
-              dispatch(initializeProject(reduxFiles));
-              dispatch(setCurrentProjectId(projectId));
-            } catch (err) {
-              console.error('Failed to load project files from hash route:', err);
-              window.location.hash = '#/';
-            }
-          } else {
-            dispatch(setCurrentProjectId(null));
-          }
+        socket.onopen = () => {
+          dispatch(setConnectionStatus('connected'));
+          socket.close();
+          isChecking = false;
         };
 
-        window.addEventListener('hashchange', handleHashChange);
-        activeCleanup = () => window.removeEventListener('hashchange', handleHashChange);
-
-        // Perform initial routing based on current hash
-        await handleHashChange();
-      } catch (err) {
-        console.error('Error in startup routing logic:', err);
+        socket.onerror = () => {
+          dispatch(setConnectionStatus('offline'));
+          isChecking = false;
+        };
+      } catch {
+        dispatch(setConnectionStatus('offline'));
+        isChecking = false;
       }
     };
 
-    loadProjectsAndRoute();
+    // Run check immediately on mount
+    checkBackend();
+
+    // Poll every 5 seconds to track backend online/offline state changes
+    checkInterval = setInterval(checkBackend, 5000);
 
     return () => {
-      if (activeCleanup) {
-        activeCleanup();
-      }
+      clearInterval(checkInterval);
     };
   }, [dispatch]);
+
+  // Load projects list for the dashboard
+  useEffect(() => {
+    if (connectionStatus === 'connected' && !currentUser) {
+      dispatch(setProjects([]));
+      return;
+    }
+
+    const loadProjectsList = async () => {
+      try {
+        await initDB();
+        let dbProjects: TypstProject[];
+        
+        if (connectionStatus === 'connected' && currentUser) {
+          await migrateLegacyProjectsToUser(currentUser.username);
+          dbProjects = await getProjectsForUserFromDB(currentUser.username);
+          
+          if (!dbProjects || dbProjects.length === 0) {
+            const defaultProj = {
+              id: `proj_default_${Date.now()}`,
+              name: 'My First Project',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              ownerId: currentUser.username
+            };
+            await saveProjectToDB(defaultProj);
+            dbProjects = [defaultProj];
+          }
+        } else {
+          dbProjects = await getAllProjectsFromDB();
+          
+          if (!dbProjects || dbProjects.length === 0) {
+            const defaultProj = {
+              id: `proj_default_${Date.now()}`,
+              name: 'My First Project',
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            };
+            await saveProjectToDB(defaultProj);
+            dbProjects = [defaultProj];
+          }
+        }
+        dispatch(setProjects(dbProjects));
+      } catch (err) {
+        console.error('Error loading projects list:', err);
+      }
+    };
+
+    loadProjectsList();
+  }, [dispatch, currentUser, connectionStatus]);
+
+  // Handle hash-based routing (project selection/loading)
+  useEffect(() => {
+    // If online (connected) and no user is logged in, redirect to login page
+    if (connectionStatus === 'connected' && !currentUser) {
+      dispatch(setCurrentProjectId(null));
+      if (window.location.hash.startsWith('#/project/')) {
+        window.location.hash = '#/';
+      }
+      return;
+    }
+
+    const handleHashChange = async () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/project/')) {
+        const projectId = hash.replace('#/project/', '');
+        
+        try {
+          await initDB();
+          
+          // Verify project existence and authorization
+          let authorized = false;
+          if (connectionStatus === 'connected') {
+            if (currentUser) {
+              const userProjects = await getProjectsForUserFromDB(currentUser.username);
+              authorized = userProjects.some(p => p.id === projectId);
+            }
+          } else {
+            const allProjects = await getAllProjectsFromDB();
+            authorized = allProjects.some(p => p.id === projectId);
+          }
+
+          if (!authorized) {
+            console.warn('Project not found or unauthorized access');
+            window.location.hash = '#/';
+            return;
+          }
+
+          const dbFiles = await getFilesForProjectFromDB(projectId);
+          const reduxFiles: TypstFile[] = dbFiles.map(f => {
+            if (f.isBinary) {
+              return {
+                path: f.path,
+                isBinary: true,
+                binaryData: f.binaryData!
+              };
+            } else {
+              return {
+                path: f.path,
+                isBinary: false,
+                cells: f.cells || []
+              };
+            }
+          });
+          dispatch(initializeProject(reduxFiles));
+          dispatch(setCurrentProjectId(projectId));
+        } catch (err) {
+          console.error('Failed to load project files from hash route:', err);
+          window.location.hash = '#/';
+        }
+      } else {
+        dispatch(setCurrentProjectId(null));
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Run on initial load/mount/status changes
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [dispatch, connectionStatus, currentUser]);
 
   // Sidebar drag resizer handler
   const startSidebarResize = (mouseDownEvent: React.MouseEvent) => {
@@ -187,8 +280,22 @@ function App() {
     ? `calc((100% - ${actualSidebarWidth}px) * ${editorPercent} / 100 - 3px)`
     : '100%';
 
-  if (screen === 'dashboard') {
-    return <Dashboard />;
+  if (connectionStatus === 'offline') {
+    if (screen === 'login' || screen === 'register' || screen === 'dashboard') {
+      return <Dashboard />;
+    }
+  } else {
+    if (screen === 'login') {
+      return <Login />;
+    }
+
+    if (screen === 'register') {
+      return <Register />;
+    }
+
+    if (screen === 'dashboard') {
+      return <Dashboard />;
+    }
   }
 
   return (

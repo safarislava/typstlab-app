@@ -22,6 +22,12 @@ export interface BinaryTypstFile {
 
 export type TypstFile = TextTypstFile | BinaryTypstFile;
 
+export interface User {
+  username: string;
+  email?: string;
+  fullName?: string;
+}
+
 interface DocumentState {
   title: string;
   files: Record<string, TypstFile>;
@@ -34,8 +40,20 @@ interface DocumentState {
   compilerError: string | null;
   currentProjectId: string | null;
   projects: TypstProject[];
-  screen: 'dashboard' | 'editor';
+  screen: 'dashboard' | 'editor' | 'login' | 'register';
+  currentUser: User | null;
 }
+
+const getStoredUser = (): User | null => {
+  try {
+    const userJson = localStorage.getItem('typstlab_user');
+    return userJson ? JSON.parse(userJson) : null;
+  } catch {
+    return null;
+  }
+};
+
+const storedUser = getStoredUser();
 
 const initialState: DocumentState = {
   title: 'Untitled Typst Document',
@@ -49,7 +67,8 @@ const initialState: DocumentState = {
   compilerError: null,
   currentProjectId: null,
   projects: [],
-  screen: 'dashboard'
+  screen: storedUser ? 'dashboard' : 'login',
+  currentUser: storedUser
 };
 
 const documentSlice = createSlice({
@@ -140,13 +159,14 @@ const documentSlice = createSlice({
     },
     setCurrentProjectId: (state, action: PayloadAction<string | null>) => {
       state.currentProjectId = action.payload;
+      const isOffline = state.connectionStatus === 'offline';
       if (action.payload === null) {
-        state.screen = 'dashboard';
+        state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
         state.files = {};
         state.activeFilePath = '';
         state.activeCellId = null;
       } else {
-        state.screen = 'editor';
+        state.screen = (isOffline || state.currentUser) ? 'editor' : 'login';
       }
     },
     addProject: (state, action: PayloadAction<TypstProject>) => {
@@ -156,7 +176,8 @@ const documentSlice = createSlice({
       state.projects = state.projects.filter(p => p.id !== action.payload);
       if (state.currentProjectId === action.payload) {
         state.currentProjectId = null;
-        state.screen = 'dashboard';
+        const isOffline = state.connectionStatus === 'offline';
+        state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
         state.files = {};
         state.activeFilePath = '';
         state.activeCellId = null;
@@ -170,8 +191,22 @@ const documentSlice = createSlice({
         project.updatedAt = Date.now();
       }
     },
-    setScreen: (state, action: PayloadAction<'dashboard' | 'editor'>) => {
+    setScreen: (state, action: PayloadAction<'dashboard' | 'editor' | 'login' | 'register'>) => {
       state.screen = action.payload;
+    },
+    loginUser: (state, action: PayloadAction<User>) => {
+      state.currentUser = action.payload;
+      state.screen = 'dashboard';
+      localStorage.setItem('typstlab_user', JSON.stringify(action.payload));
+    },
+    logoutUser: (state) => {
+      state.currentUser = null;
+      state.screen = 'login';
+      state.currentProjectId = null;
+      state.files = {};
+      state.activeFilePath = '';
+      state.activeCellId = null;
+      localStorage.removeItem('typstlab_user');
     },
     
     // Multi-file actions
@@ -310,7 +345,9 @@ export const {
   addProject,
   deleteProject,
   updateProjectName,
-  setScreen
+  setScreen,
+  loginUser,
+  logoutUser
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

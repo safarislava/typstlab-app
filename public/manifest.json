@@ -1,0 +1,24 @@
+{
+  "name": "TypstLab",
+  "short_name": "TypstLab",
+  "description": "Interactive Offline-First Typst Document Editor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1f22",
+  "theme_color": "#239dad",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

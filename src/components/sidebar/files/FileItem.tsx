@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, FileImage, Trash2, Edit } from 'lucide-react';
+import { FileText, FileImage, Trash2, Edit, Download } from 'lucide-react';
 import type { TypstFile } from '../../../store/documentSlice';
+import { downloadTypstFile } from '../../../utils/fileDownloader';
 
 interface FileItemProps {
   file: TypstFile;
@@ -28,6 +29,11 @@ export const FileItem: React.FC<FileItemProps> = ({
       editInputRef.current.focus();
     }
   }, [isEditing]);
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    downloadTypstFile(file);
+  };
 
   const handleStartRename = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -66,6 +72,12 @@ export const FileItem: React.FC<FileItemProps> = ({
     >
       {!isEditing && (
         <div className="file-actions">
+          <button
+            onClick={handleDownload}
+            title="Download file"
+          >
+            <Download size={12} />
+          </button>
           <button
             onClick={handleStartRename}
             title="Rename file"

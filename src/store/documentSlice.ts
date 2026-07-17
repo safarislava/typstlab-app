@@ -1,6 +1,7 @@
 import type {PayloadAction} from '@reduxjs/toolkit';
 import {createSlice} from '@reduxjs/toolkit';
-import type { TypstProject } from './db';
+import type {TypstProject} from './db';
+import {parseXmlToCells} from '../utils/xmlSerializer';
 
 export interface Cell {
   id: string;
@@ -103,7 +104,7 @@ const documentSlice = createSlice({
       const activeFile = state.files[state.activeFilePath];
       if (activeFile && !activeFile.isBinary) {
         const newCell: Cell = {
-          id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
           content: ''
         };
         activeFile.cells.splice(index, 0, newCell);
@@ -218,8 +219,8 @@ const documentSlice = createSlice({
           state.files[f.path] = f;
         });
       } else {
-        // Initialize default main.typ if empty
-        const defaultPath = 'main.typ';
+        // Initialize default main.typxml if empty
+        const defaultPath = 'main.typxml';
         state.files[defaultPath] = {
           path: defaultPath,
           isBinary: false,
@@ -233,7 +234,7 @@ const documentSlice = createSlice({
         };
       }
       const paths = Object.keys(state.files);
-      state.activeFilePath = paths[0] || 'main.typ';
+      state.activeFilePath = paths[0] || 'main.typxml';
       const activeFile = state.files[state.activeFilePath];
       state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
     },
@@ -245,7 +246,7 @@ const documentSlice = createSlice({
         isBinary: false,
         cells: [
           {
-            id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
             content: `// ${path}\n`
           }
         ]
@@ -275,8 +276,8 @@ const documentSlice = createSlice({
           const activeFile = state.files[keys[0]];
           state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
         } else {
-          // Re-create default main.typ if all deleted
-          const defaultPath = 'main.typ';
+          // Re-create default main.typxml if all deleted
+          const defaultPath = 'main.typxml';
           state.files[defaultPath] = {
             path: defaultPath,
             isBinary: false,
@@ -302,20 +303,38 @@ const documentSlice = createSlice({
     },
     addTextFileWithContent: (state, action: PayloadAction<{ path: string; content: string }>) => {
       const { path, content } = action.payload;
-      const newFile: TextTypstFile = {
-        path,
-        isBinary: false,
-        cells: [
+      let cells: Cell[];
+      
+      if (path.endsWith('.typxml')) {
+        try {
+          cells = parseXmlToCells(content);
+        } catch (err) {
+          console.warn('Failed to parse XML blocks, falling back to plain text:', err);
+          cells = [
+            {
+              id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+              content,
+              title: 'Imported Content'
+            }
+          ];
+        }
+      } else {
+        cells = [
           {
-            id: `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
             content,
             title: 'Imported Content'
           }
-        ]
+        ];
+      }
+
+      state.files[path] = {
+        path,
+        isBinary: false,
+        cells
       };
-      state.files[path] = newFile;
       state.activeFilePath = path;
-      state.activeCellId = newFile.cells[0].id;
+      state.activeCellId = cells.length > 0 ? cells[0].id : null;
     }
   }
 });

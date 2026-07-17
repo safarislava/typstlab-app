@@ -20,11 +20,11 @@ export const Dashboard: React.FC = () => {
   // Delete confirmation state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleCreateProject = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
-    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     const newProj = {
       id: projectId,
       name: newProjectName.trim(),
@@ -51,7 +51,7 @@ export const Dashboard: React.FC = () => {
     setEditingName(name);
   };
 
-  const handleSaveRename = (e: React.FormEvent, id: string) => {
+  const handleSaveRename = (e: React.SyntheticEvent<HTMLFormElement>, id: string) => {
     e.preventDefault();
     if (editingName.trim()) {
       dispatch(updateProjectName({ id, name: editingName.trim() }));

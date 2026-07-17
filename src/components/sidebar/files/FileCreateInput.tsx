@@ -28,7 +28,7 @@ export const FileCreateInput: React.FC<FileCreateInputProps> = ({ onSave, onCanc
       <input
         ref={inputRef}
         type="text"
-        placeholder="filename.typ"
+        placeholder="filename.typxml"
         value={newFileName}
         onChange={(e) => setNewFileName(e.target.value)}
         onKeyDown={(e) => {

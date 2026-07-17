@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { addProject, deleteProject, updateProjectName } from '../store/documentSlice';
-import { Plus, Search, Folder, Calendar, Trash2, Edit2, Check, X, ArrowRight, BookOpen } from 'lucide-react';
+import { addProject, deleteProject, updateProjectName, logoutUser } from '../store/documentSlice';
+import { Plus, Search, Folder, Calendar, Trash2, Edit2, Check, X, ArrowRight, BookOpen, LogOut } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const dispatch = useAppDispatch();
   const projects = useAppSelector((state) => state.document.projects);
+  const currentUser = useAppSelector((state) => state.document.currentUser);
+  const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -18,16 +20,17 @@ export const Dashboard: React.FC = () => {
   // Delete confirmation state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleCreateProject = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
-    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     const newProj = {
       id: projectId,
       name: newProjectName.trim(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      ownerId: connectionStatus === 'connected' ? currentUser?.username : undefined,
     };
 
     dispatch(addProject(newProj));
@@ -48,7 +51,7 @@ export const Dashboard: React.FC = () => {
     setEditingName(name);
   };
 
-  const handleSaveRename = (e: React.FormEvent, id: string) => {
+  const handleSaveRename = (e: React.SyntheticEvent<HTMLFormElement>, id: string) => {
     e.preventDefault();
     if (editingName.trim()) {
       dispatch(updateProjectName({ id, name: editingName.trim() }));
@@ -96,13 +99,36 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard-container">
-
       {/* Main Content Area */}
       <main className="dashboard-content">
         {/* Welcome Section */}
         <section className="dashboard-welcome">
-          <h1>Welcome to <span>TypstLab</span></h1>
-          <p>Create, compile, and manage Typst documents with interactive markup cells.</p>
+          <div className="welcome-content-wrapper">
+            <div className="welcome-text">
+              <h1>Welcome to <span>TypstLab</span></h1>
+              <p>Create, compile, and manage Typst documents with interactive markup cells.</p>
+            </div>
+            
+            {connectionStatus === 'connected' && currentUser && (
+              <div className="dashboard-user-card">
+                <div className="user-card-avatar">
+                  {currentUser.username[0].toUpperCase()}
+                </div>
+                <div className="user-card-details">
+                  <div className="user-card-name">{currentUser.fullName || currentUser.username}</div>
+                  <div className="user-card-username">@{currentUser.username}</div>
+                </div>
+                <button 
+                  className="btn-switch-user" 
+                  onClick={() => dispatch(logoutUser())}
+                  title="Сменить пользователя"
+                >
+                  <LogOut size={16} />
+                  <span>Сменить пользователя</span>
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Toolbar: Search and Stats */}

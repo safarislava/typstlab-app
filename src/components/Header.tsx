@@ -1,14 +1,15 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setTitle, setPreviewMode, updateProjectName } from '../store/documentSlice';
-import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
+import { setTitle, setPreviewMode, updateProjectName, logoutUser } from '../store/documentSlice';
+import { Download, FileText, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft, LogOut } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
 import { syncFilesToVfs } from '../utils/vfsSync';
+import { downloadTypstFile } from '../utils/fileDownloader';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { currentProjectId, projects, title, files, activeFilePath, previewMode, isCompiling, connectionStatus, compilerReady, compilerError } = useAppSelector(
+  const { currentProjectId, projects, title, files, activeFilePath, previewMode, isCompiling, connectionStatus, compilerReady, compilerError, currentUser } = useAppSelector(
     (state) => state.document
   );
 
@@ -45,6 +46,13 @@ export const Header: React.FC = () => {
       }
     } catch (err: any) {
       alert('Error exporting PDF: ' + (err?.message || err));
+    }
+  };
+
+  const handleExportSource = () => {
+    const activeFile = files[activeFilePath];
+    if (activeFile) {
+      downloadTypstFile(activeFile);
     }
   };
 
@@ -154,6 +162,28 @@ export const Header: React.FC = () => {
           <Download size={15} />
           <span>Export PDF</span>
         </button>
+
+        <button
+          className="export-pdf-btn"
+          onClick={handleExportSource}
+          disabled={!activeFilePath}
+          title="Export active file as XML blocks"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+        >
+          <FileText size={15} />
+          <span>Export Source</span>
+        </button>
+
+        {connectionStatus === 'connected' && currentUser && (
+          <div className="user-profile-widget header-user-widget">
+            <div className="user-avatar" title={currentUser.fullName || currentUser.username}>
+              {currentUser.username[0].toUpperCase()}
+            </div>
+            <button className="logout-btn" onClick={() => dispatch(logoutUser())} title="Выйти">
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

@@ -18,8 +18,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
 
   const handleSaveCreate = (name: string) => {
     let filename = name;
-    if (!filename.endsWith('.typ')) {
-      filename += '.typ';
+    if (!filename.endsWith('.typxml')) {
+      filename += '.typxml';
     }
     if (files[filename]) {
       alert('A file with this name already exists.');
@@ -64,7 +64,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
     const droppedFiles = Array.from(e.dataTransfer.files);
     for (const file of droppedFiles) {
       const name = file.name;
-      if (name.endsWith('.typ')) {
+      if (name.endsWith('.typxml')) {
         const reader = new FileReader();
         reader.onload = (event) => {
           const content = event.target?.result as string;

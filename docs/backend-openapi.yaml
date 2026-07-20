@@ -1,0 +1,649 @@
+openapi: 3.0.0
+info:
+  title: TypstLab Server API
+  description: Server-side API of the TypstLab collaborative editing platform, built in Go. Handles user auth, project management, and collaborative Typst and binary file updates.
+  version: 1.0.0
+servers:
+  - url: typstlab-api.safarislava.tech/
+    description: Local Development Server
+
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Invalid input or user already exists
+
+  /login:
+    post:
+      summary: Authenticate user and get access token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successfully authenticated
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: refresh_token=abc...; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000
+              description: HttpOnly cookie containing the refresh token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid email or password
+
+  /refresh:
+    post:
+      summary: Refresh JWT access token using the refresh cookie
+      tags:
+        - Authentication
+      parameters:
+        - in: cookie
+          name: refresh_token
+          required: true
+          schema:
+            type: string
+          description: Refresh token cookie
+      responses:
+        '200':
+          description: Token refreshed successfully
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Renewed refresh token cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Missing refresh token cookie
+        '401':
+          description: Invalid or expired refresh token
+
+  /logout:
+    post:
+      summary: Log out current user and clear refresh session
+      tags:
+        - Authentication
+      parameters:
+        - in: cookie
+          name: refresh_token
+          required: false
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Successfully logged out, cookie cleared
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Expired refresh token cookie (Max-Age=-1)
+
+  /health:
+    get:
+      summary: Check health status of the server
+      tags:
+        - System
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /projects:
+    post:
+      summary: Create a new project
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: My Typst Report
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectCreateResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Insufficient role
+
+  /projects/{projectID}:
+    get:
+      summary: Get details of a project
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - User is not a member of the project
+        '404':
+          description: Project not found
+
+  /projects/{projectID}/files:
+    get:
+      summary: List all files in a project
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of project files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Project not found
+
+  /projects/{projectID}/files/typst:
+    post:
+      summary: Create a new Typst file in a project
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: main.typ
+      responses:
+        '201':
+          description: Typst file created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          description: Invalid input or empty file name
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /projects/{projectID}/files/binary:
+    post:
+      summary: Create or upload a binary file in a project
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - content
+              properties:
+                name:
+                  type: string
+                  example: logo.png
+                content:
+                  type: string
+                  format: byte
+                  description: Base64-encoded file content
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                name:
+                  type: string
+                  description: Custom filename (defaults to uploaded file name)
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Binary file uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /projects/{projectID}/files/{fileID}:
+    delete:
+      summary: Delete a file from a project
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: File deleted successfully
+        '400':
+          description: File does not belong to the project or invalid request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: File or Project not found
+
+  /files/typst/{fileID}:
+    get:
+      summary: Retrieve a Typst file's metadata, CRDT state, and parsed blocks
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Typst file content and state retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TypstFileResponse'
+        '400':
+          description: Not a Typst file
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: File not found
+
+  /files/typst/{fileID}/changes:
+    post:
+      summary: Apply CRDT delta updates to a Typst file
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - delta
+              properties:
+                delta:
+                  type: string
+                  format: byte
+                  description: Base64-encoded Yjs state update delta bytes
+      responses:
+        '200':
+          description: Delta applied successfully, returns updated state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TypstFileResponse'
+        '400':
+          description: Invalid request body or file type
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: File not found
+
+  /files/binary/{fileID}:
+    get:
+      summary: Get metadata of a binary file
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Binary file metadata retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinaryFileMetadataResponse'
+        '400':
+          description: Not a binary file
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: File not found
+
+  /files/binary/{fileID}/raw:
+    get:
+      summary: Download binary file content directly
+      tags:
+        - Files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Raw file bytes
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: application/octet-stream
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename=logo.png
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Not a binary file
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: File not found
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: securepassword123
+        role:
+          type: string
+          enum: [user, admin]
+          example: user
+
+    RegisterResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: securepassword123
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT Access Token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    ProjectCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    ProjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        updated_at:
+          type: string
+          format: date-time
+
+    FileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [typst, binary]
+        updated_at:
+          type: string
+          format: date-time
+
+    BlockResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        content:
+          type: string
+
+    TypstFileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          example: typst
+        state:
+          type: string
+          format: byte
+          description: Base64-encoded merged Yjs binary state
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlockResponse'
+        updated_at:
+          type: string
+          format: date-time
+
+    BinaryFileMetadataResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          example: binary
+        size:
+          type: integer
+          description: Content size in bytes
+        updated_at:
+          type: string
+          format: date-time

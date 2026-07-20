@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser, setScreen } from '../store/documentSlice';
 import { getUserFromDB, hashPassword, migrateLegacyProjectsToUser } from '../store/db';
+import { api } from '../utils/api';
 import { Lock, User, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const dispatch = useAppDispatch();
+  const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,36 +25,69 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const cleanUsername = username.trim().toLowerCase();
-      const dbUser = await getUserFromDB(cleanUsername);
-      if (!dbUser) {
-        setError('Пользователь не найден');
-        setIsLoading(false);
-        return;
+      if (connectionStatus === 'connected') {
+        const cleanEmail = username.trim();
+        // Online login using Go backend API
+        const loginData = await api.login(cleanEmail, password.trim());
+        const token = loginData.token;
+        
+        let decodedPayload: any = {};
+        try {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          decodedPayload = JSON.parse(jsonPayload);
+        } catch (e) {
+          console.error('Failed to decode JWT token:', e);
+        }
+
+        const usernameParsed = decodedPayload.email?.split('@')[0] || cleanEmail.split('@')[0] || 'user';
+        const user = {
+          username: usernameParsed,
+          email: decodedPayload.email || cleanEmail,
+          fullName: decodedPayload.fullName || decodedPayload.name || usernameParsed
+        };
+
+        // Migrate any local legacy projects to this user
+        await migrateLegacyProjectsToUser(user.username);
+
+        dispatch(loginUser(user));
+      } else {
+        // Offline login using local IndexedDB
+        const cleanUsername = username.trim().toLowerCase();
+        const dbUser = await getUserFromDB(cleanUsername);
+        if (!dbUser) {
+          setError('Пользователь не найден');
+          setIsLoading(false);
+          return;
+        }
+
+        const passHash = await hashPassword(password.trim());
+        if (dbUser.passwordHash !== passHash) {
+          setError('Неверный пароль');
+          setIsLoading(false);
+          return;
+        }
+
+        // Successful login - Migrate any legacy projects to this user
+        await migrateLegacyProjectsToUser(dbUser.username);
+
+        dispatch(loginUser({
+          username: dbUser.username,
+          email: dbUser.email,
+          fullName: dbUser.fullName
+        }));
       }
-
-      const passHash = await hashPassword(password.trim());
-      if (dbUser.passwordHash !== passHash) {
-        setError('Неверный пароль');
-        setIsLoading(false);
-        return;
-      }
-
-      // Successful login - Migrate any legacy projects to this user
-      await migrateLegacyProjectsToUser(dbUser.username);
-
-      dispatch(loginUser({
-        username: dbUser.username,
-        email: dbUser.email,
-        fullName: dbUser.fullName
-      }));
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('Произошла ошибка при входе. Попробуйте еще раз.');
+      setError(err?.message || 'Произошла ошибка при входе. Попробуйте еще раз.');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="auth-container">
@@ -90,13 +125,15 @@ export const Login: React.FC = () => {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="username">Имя пользователя</label>
+              <label htmlFor="username">
+                {connectionStatus === 'connected' ? 'Email / Имя пользователя' : 'Имя пользователя'}
+              </label>
               <div className="input-wrapper">
                 <User size={16} className="input-icon" />
                 <input
                   id="username"
                   type="text"
-                  placeholder="Введите имя пользователя"
+                  placeholder={connectionStatus === 'connected' ? "Введите email или имя пользователя" : "Введите имя пользователя"}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}

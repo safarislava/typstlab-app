@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { addProject, deleteProject, updateProjectName, logoutUser } from '../store/documentSlice';
+import { api } from '../utils/api';
 import { Plus, Search, Folder, Calendar, Trash2, Edit2, Check, X, ArrowRight, BookOpen, LogOut } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
@@ -20,16 +21,32 @@ export const Dashboard: React.FC = () => {
   // Delete confirmation state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleCreateProject = (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleCreateProject = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
-    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    let projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    let createdAt = Date.now();
+    let updatedAt = Date.now();
+
+    if (connectionStatus === 'connected') {
+      try {
+        const response = await api.createProject(newProjectName.trim());
+        projectId = response.id;
+        if (response.updated_at) {
+          createdAt = new Date(response.updated_at).getTime();
+          updatedAt = createdAt;
+        }
+      } catch (err) {
+        console.error('Failed to create project on server:', err);
+      }
+    }
+
     const newProj = {
       id: projectId,
       name: newProjectName.trim(),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt,
+      updatedAt,
       ownerId: connectionStatus === 'connected' ? currentUser?.username : undefined,
     };
 

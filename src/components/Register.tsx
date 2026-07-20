@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser, setScreen } from '../store/documentSlice';
 import { getUserFromDB, saveUserToDB, hashPassword, migrateLegacyProjectsToUser } from '../store/db';
+import { api } from '../utils/api';
 import { Lock, User, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus, CheckCircle } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const dispatch = useAppDispatch();
+  const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
   
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -47,39 +49,65 @@ export const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const cleanUsername = username.trim().toLowerCase();
-      // Check if user exists
-      const existingUser = await getUserFromDB(cleanUsername);
-      if (existingUser) {
-        setError('Имя пользователя уже занято');
-        setIsLoading(false);
-        return;
+      if (connectionStatus === 'connected') {
+        let registerEmail = email.trim();
+        if (!registerEmail) {
+          registerEmail = `${username.trim().toLowerCase()}@typstlab.local`;
+        }
+
+        // 1. Register with Go backend
+        await api.register(registerEmail, password.trim(), 'user');
+        
+        // 2. Log in with Go backend
+        await api.login(registerEmail, password.trim());
+
+        const usernameParsed = username.trim().toLowerCase();
+        const user = {
+          username: usernameParsed,
+          email: registerEmail,
+          fullName: fullName.trim() || usernameParsed
+        };
+
+        // Migrate legacy projects to the new user automatically
+        await migrateLegacyProjectsToUser(user.username);
+
+        // Login user
+        dispatch(loginUser(user));
+      } else {
+        const cleanUsername = username.trim().toLowerCase();
+        // Check if user exists
+        const existingUser = await getUserFromDB(cleanUsername);
+        if (existingUser) {
+          setError('Имя пользователя уже занято');
+          setIsLoading(false);
+          return;
+        }
+
+        // Hash password and save to DB
+        const passwordHash = await hashPassword(password.trim());
+        const newUser = {
+          username: cleanUsername,
+          passwordHash,
+          email: email.trim() || undefined,
+          fullName: fullName.trim() || undefined,
+          createdAt: Date.now(),
+        };
+
+        await saveUserToDB(newUser);
+
+        // Migrate legacy projects to the new user automatically
+        await migrateLegacyProjectsToUser(newUser.username);
+
+        // Login user
+        dispatch(loginUser({
+          username: newUser.username,
+          email: newUser.email,
+          fullName: newUser.fullName
+        }));
       }
-
-      // Hash password and save to DB
-      const passwordHash = await hashPassword(password.trim());
-      const newUser = {
-        username: cleanUsername,
-        passwordHash,
-        email: email.trim() || undefined,
-        fullName: fullName.trim() || undefined,
-        createdAt: Date.now(),
-      };
-
-      await saveUserToDB(newUser);
-
-      // Migrate legacy projects to the new user automatically
-      await migrateLegacyProjectsToUser(newUser.username);
-
-      // Login user
-      dispatch(loginUser({
-        username: newUser.username,
-        email: newUser.email,
-        fullName: newUser.fullName
-      }));
     } catch (err: any) {
       console.error('Registration error:', err);
-      setError('Произошла ошибка при регистрации. Попробуйте еще раз.');
+      setError(err?.message || 'Произошла ошибка при регистрации. Попробуйте еще раз.');
     } finally {
       setIsLoading(false);
     }

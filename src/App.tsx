@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -11,8 +11,10 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
-import { initDB, saveProjectToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
+import { initDB, saveProjectToDB, saveFileToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
 import type { TypstProject } from './store/db';
+import { api } from './utils/api';
+import { syncOfflineDataToServer } from './utils/syncManager';
 
 let wasmInitialized = false;
 
@@ -52,30 +54,25 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Poll backend (WebSocket LSP) availability to update online/offline connectionStatus
+  // Poll backend (HTTP /health) availability to update online/offline connectionStatus
   useEffect(() => {
     let checkInterval: any;
     let isChecking = false;
 
-    const checkBackend = () => {
+    const checkBackend = async () => {
       if (isChecking) return;
       isChecking = true;
 
       try {
-        const socket = new WebSocket('ws://localhost:8080/lsp');
-        
-        socket.onopen = () => {
+        const isHealthy = await api.checkHealth();
+        if (isHealthy) {
           dispatch(setConnectionStatus('connected'));
-          socket.close();
-          isChecking = false;
-        };
-
-        socket.onerror = () => {
+        } else {
           dispatch(setConnectionStatus('offline'));
-          isChecking = false;
-        };
+        }
       } catch {
         dispatch(setConnectionStatus('offline'));
+      } finally {
         isChecking = false;
       }
     };
@@ -104,6 +101,8 @@ function App() {
         let dbProjects: TypstProject[];
         
         if (connectionStatus === 'connected' && currentUser) {
+          // Sync any offline created projects/files to Go backend
+          await syncOfflineDataToServer(currentUser);
           await migrateLegacyProjectsToUser(currentUser.username);
           dbProjects = await getProjectsForUserFromDB(currentUser.username);
           
@@ -143,9 +142,12 @@ function App() {
 
   // Handle hash-based routing (project selection/loading)
   useEffect(() => {
-    // If online (connected) and no user is logged in, redirect to login page
+    // If online (connected) and no user is logged in, redirect to login page (except if on login/register screen)
     if (connectionStatus === 'connected' && !currentUser) {
       dispatch(setCurrentProjectId(null));
+      if (screen !== 'login' && screen !== 'register') {
+        dispatch(setScreen('login'));
+      }
       if (window.location.hash.startsWith('#/project/')) {
         window.location.hash = '#/';
       }
@@ -162,8 +164,22 @@ function App() {
           
           // Verify project existence and authorization
           let authorized = false;
-          if (connectionStatus === 'connected') {
-            if (currentUser) {
+          if (connectionStatus === 'connected' && currentUser) {
+            try {
+              const serverProj = await api.getProjectDetails(projectId);
+              if (serverProj) {
+                authorized = true;
+                // Cache/Update project info locally
+                await saveProjectToDB({
+                  id: serverProj.id,
+                  name: serverProj.name,
+                  createdAt: serverProj.created_at ? new Date(serverProj.created_at).getTime() : Date.now(),
+                  updatedAt: serverProj.updated_at ? new Date(serverProj.updated_at).getTime() : Date.now(),
+                  ownerId: currentUser.username
+                });
+              }
+            } catch (err) {
+              console.warn('Failed to verify project with server, checking local IndexedDB:', err);
               const userProjects = await getProjectsForUserFromDB(currentUser.username);
               authorized = userProjects.some(p => p.id === projectId);
             }
@@ -178,22 +194,82 @@ function App() {
             return;
           }
 
-          const dbFiles = await getFilesForProjectFromDB(projectId);
-          const reduxFiles: TypstFile[] = dbFiles.map(f => {
-            if (f.isBinary) {
-              return {
-                path: f.path,
-                isBinary: true,
-                binaryData: f.binaryData!
-              };
-            } else {
-              return {
-                path: f.path,
-                isBinary: false,
-                cells: f.cells || []
-              };
+          let reduxFiles: TypstFile[] = [];
+          let loadedFromBackend = false;
+
+          if (connectionStatus === 'connected') {
+            try {
+              const serverFiles = await api.getProjectFiles(projectId);
+              for (const file of serverFiles) {
+                if (file.type === 'typst') {
+                  const typstFileDetails = await api.getTypstFile(file.id);
+                  const cells = typstFileDetails.blocks ? typstFileDetails.blocks.map((b: any) => ({
+                    id: b.id,
+                    content: b.content,
+                    title: b.name
+                  })) : [];
+
+                  reduxFiles.push({
+                    path: file.name,
+                    isBinary: false,
+                    cells,
+                    backendId: file.id
+                  });
+
+                  // Cache locally
+                  await saveFileToDB({
+                    id: `${projectId}:${file.name}`,
+                    projectId,
+                    path: file.name,
+                    isBinary: false,
+                    cells
+                  });
+                } else if (file.type === 'binary') {
+                  const rawBuffer = await api.getBinaryFileRaw(file.id);
+                  const binaryData = new Uint8Array(rawBuffer);
+
+                  reduxFiles.push({
+                    path: file.name,
+                    isBinary: true,
+                    binaryData,
+                    backendId: file.id
+                  });
+
+                  // Cache locally
+                  await saveFileToDB({
+                    id: `${projectId}:${file.name}`,
+                    projectId,
+                    path: file.name,
+                    isBinary: true,
+                    binaryData
+                  });
+                }
+              }
+              loadedFromBackend = true;
+            } catch (err) {
+              console.error('Failed to sync files from server, falling back to local files:', err);
             }
-          });
+          }
+
+          if (!loadedFromBackend) {
+            const dbFiles = await getFilesForProjectFromDB(projectId);
+            reduxFiles = dbFiles.map(f => {
+              if (f.isBinary) {
+                return {
+                  path: f.path,
+                  isBinary: true,
+                  binaryData: f.binaryData!
+                };
+              } else {
+                return {
+                  path: f.path,
+                  isBinary: false,
+                  cells: f.cells || []
+                };
+              }
+            });
+          }
+
           dispatch(initializeProject(reduxFiles));
           dispatch(setCurrentProjectId(projectId));
         } catch (err) {
@@ -213,7 +289,7 @@ function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [dispatch, connectionStatus, currentUser]);
+  }, [dispatch, connectionStatus, currentUser, screen]);
 
   // Sidebar drag resizer handler
   const startSidebarResize = (mouseDownEvent: React.MouseEvent) => {

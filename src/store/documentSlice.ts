@@ -2,6 +2,8 @@ import type {PayloadAction} from '@reduxjs/toolkit';
 import {createSlice} from '@reduxjs/toolkit';
 import type {TypstProject} from './db';
 import {parseXmlToCells} from '../utils/xmlSerializer';
+import {api} from '../utils/api';
+
 
 export interface Cell {
   id: string;
@@ -13,12 +15,14 @@ export interface TextTypstFile {
   path: string;
   isBinary?: false;
   cells: Cell[];
+  backendId?: string;
 }
 
 export interface BinaryTypstFile {
   path: string;
   isBinary: true;
   binaryData: Uint8Array;
+  backendId?: string;
 }
 
 export type TypstFile = TextTypstFile | BinaryTypstFile;
@@ -146,6 +150,17 @@ const documentSlice = createSlice({
     },
     setConnectionStatus: (state, action: PayloadAction<'connected' | 'connecting' | 'offline'>) => {
       state.connectionStatus = action.payload;
+      if (action.payload === 'connected' && !state.currentUser) {
+        if (state.screen !== 'login' && state.screen !== 'register') {
+          state.screen = 'login';
+          state.currentProjectId = null;
+          state.files = {};
+          state.activeFilePath = '';
+          state.activeCellId = null;
+        }
+      } else if (action.payload === 'offline' && (state.screen === 'login' || state.screen === 'register')) {
+        state.screen = 'dashboard';
+      }
     },
     setCompilerReady: (state, action: PayloadAction<boolean>) => {
       state.compilerReady = action.payload;
@@ -162,7 +177,9 @@ const documentSlice = createSlice({
       state.currentProjectId = action.payload;
       const isOffline = state.connectionStatus === 'offline';
       if (action.payload === null) {
-        state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
+        if (state.screen !== 'login' && state.screen !== 'register') {
+          state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
+        }
         state.files = {};
         state.activeFilePath = '';
         state.activeCellId = null;
@@ -208,6 +225,7 @@ const documentSlice = createSlice({
       state.activeFilePath = '';
       state.activeCellId = null;
       localStorage.removeItem('typstlab_user');
+      api.setToken(null);
     },
     
     // Multi-file actions
@@ -335,6 +353,20 @@ const documentSlice = createSlice({
       };
       state.activeFilePath = path;
       state.activeCellId = cells.length > 0 ? cells[0].id : null;
+    },
+    setFileBackendId: (state, action: PayloadAction<{ path: string; backendId: string }>) => {
+      const { path, backendId } = action.payload;
+      if (state.files[path]) {
+        state.files[path].backendId = backendId;
+      }
+    },
+    setFileBackendIds: (state, action: PayloadAction<Record<string, string>>) => {
+      const mappings = action.payload;
+      Object.entries(mappings).forEach(([path, backendId]) => {
+        if (state.files[path]) {
+          state.files[path].backendId = backendId;
+        }
+      });
     }
   }
 });
@@ -366,7 +398,9 @@ export const {
   updateProjectName,
   setScreen,
   loginUser,
-  logoutUser
+  logoutUser,
+  setFileBackendId,
+  setFileBackendIds
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

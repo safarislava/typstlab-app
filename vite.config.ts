@@ -5,6 +5,21 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/',
   plugins: [react()],
+  server: {
+    proxy: {
+      '/health': 'http://localhost:8080',
+      '/register': 'http://localhost:8080',
+      '/login': 'http://localhost:8080',
+      '/refresh': 'http://localhost:8080',
+      '/logout': 'http://localhost:8080',
+      '/projects': 'http://localhost:8080',
+      '/files': 'http://localhost:8080',
+      '/lsp': {
+        target: 'ws://localhost:8080',
+        ws: true
+      }
+    }
+  },
   build: {
     rollupOptions: {
       output: {

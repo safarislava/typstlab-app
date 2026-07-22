@@ -6,7 +6,7 @@
 
 **TypstLab App** is the client-side Progressive Web App (PWA) for the TypstLab collaborative document editor. It merges the document-design simplicity of **Microsoft Word**, the scope model of **Jupyter Notebooks**, and the typesetting quality of **Typst** — running entirely in the browser via **WebAssembly**.
 
-This repository contains the user interface and client-side compilation engine. For the backend synchronization service, see the TypstLab Backend repository.
+This repository contains the user interface and client-side compilation engine. For the backend synchronization service, see the [TypstLab Backend repository](https://github.com/safarislava/typstlab-server).
 
 ---
 

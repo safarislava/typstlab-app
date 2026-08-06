@@ -54,12 +54,18 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Poll backend (HTTP /health) availability to update online/offline connectionStatus
+  // Poll backend (HTTP /health) availability to update online/offline connectionStatus.
+  // Stop polling and sending /health requests whenever app goes offline.
   useEffect(() => {
     let checkInterval: any;
     let isChecking = false;
 
     const checkBackend = async () => {
+      if (!navigator.onLine) {
+        dispatch(setConnectionStatus('offline'));
+        return;
+      }
+
       if (isChecking) return;
       isChecking = true;
 
@@ -77,16 +83,37 @@ function App() {
       }
     };
 
-    // Run check immediately on mount
+    const handleOffline = () => {
+      dispatch(setConnectionStatus('offline'));
+    };
+
+    const handleOnline = () => {
+      checkBackend();
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    // If browser is offline or application went offline, do not poll health requests
+    if (!navigator.onLine || connectionStatus === 'offline') {
+      return () => {
+        window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('online', handleOnline);
+      };
+    }
+
+    // Run check immediately when online/connected
     checkBackend();
 
-    // Poll every 5 seconds to track backend online/offline state changes
+    // Poll every 5 seconds only while connected
     checkInterval = setInterval(checkBackend, 5000);
 
     return () => {
-      clearInterval(checkInterval);
+      if (checkInterval) clearInterval(checkInterval);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
     };
-  }, [dispatch]);
+  }, [dispatch, connectionStatus]);
 
   // Load projects list for the dashboard
   useEffect(() => {

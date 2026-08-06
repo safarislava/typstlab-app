@@ -16,6 +16,7 @@ export interface TextTypstFile {
   isBinary?: false;
   cells: Cell[];
   backendId?: string;
+  fileUuid?: string;
 }
 
 export interface BinaryTypstFile {
@@ -23,6 +24,7 @@ export interface BinaryTypstFile {
   isBinary: true;
   binaryData: Uint8Array;
   backendId?: string;
+  fileUuid?: string;
 }
 
 export type TypstFile = TextTypstFile | BinaryTypstFile;
@@ -108,7 +110,7 @@ const documentSlice = createSlice({
       const activeFile = state.files[state.activeFilePath];
       if (activeFile && !activeFile.isBinary) {
         const newCell: Cell = {
-          id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          id: crypto.randomUUID(),
           content: ''
         };
         activeFile.cells.splice(index, 0, newCell);
@@ -244,7 +246,7 @@ const documentSlice = createSlice({
           isBinary: false,
           cells: [
             {
-              id: `cell-default-1`,
+              id: crypto.randomUUID(),
               content: '= Welcome to TypstLab\n\nThis is your new project. Start editing!\n',
               title: 'Welcome'
             }
@@ -262,9 +264,10 @@ const documentSlice = createSlice({
       const newFile: TextTypstFile = {
         path,
         isBinary: false,
+        fileUuid: crypto.randomUUID(),
         cells: [
           {
-            id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            id: crypto.randomUUID(),
             content: `// ${path}\n`
           }
         ]
@@ -316,6 +319,7 @@ const documentSlice = createSlice({
       state.files[path] = {
         path,
         isBinary: true,
+        fileUuid: crypto.randomUUID(),
         binaryData
       };
     },
@@ -330,7 +334,7 @@ const documentSlice = createSlice({
           console.warn('Failed to parse XML blocks, falling back to plain text:', err);
           cells = [
             {
-              id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+              id: crypto.randomUUID(),
               content,
               title: 'Imported Content'
             }
@@ -339,7 +343,7 @@ const documentSlice = createSlice({
       } else {
         cells = [
           {
-            id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            id: crypto.randomUUID(),
             content,
             title: 'Imported Content'
           }
@@ -349,6 +353,7 @@ const documentSlice = createSlice({
       state.files[path] = {
         path,
         isBinary: false,
+        fileUuid: crypto.randomUUID(),
         cells
       };
       state.activeFilePath = path;

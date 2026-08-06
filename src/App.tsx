@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -11,10 +11,10 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
-import { initDB, saveProjectToDB, saveFileToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
+import { initDB, saveProjectToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
 import type { TypstProject } from './store/db';
 import { api } from './utils/api';
-import { syncOfflineDataToServer } from './utils/syncManager';
+import { syncProjectWithServer } from './utils/syncManager';
 
 let wasmInitialized = false;
 
@@ -54,32 +54,26 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Poll backend (HTTP /health) availability to update online/offline connectionStatus.
-  // Stop polling and sending /health requests whenever app goes offline.
+  // Register global network error listener to transition to offline state when API calls fail
   useEffect(() => {
-    let checkInterval: any;
-    let isChecking = false;
+    api.registerNetworkErrorCallback(() => {
+      dispatch(setConnectionStatus('offline'));
+    });
+  }, [dispatch]);
 
-    const checkBackend = async () => {
+  // Check backend (HTTP /health) availability ONLY once on site startup and on browser online event
+  useEffect(() => {
+    const checkInitialBackend = async () => {
       if (!navigator.onLine) {
         dispatch(setConnectionStatus('offline'));
         return;
       }
 
-      if (isChecking) return;
-      isChecking = true;
-
       try {
         const isHealthy = await api.checkHealth();
-        if (isHealthy) {
-          dispatch(setConnectionStatus('connected'));
-        } else {
-          dispatch(setConnectionStatus('offline'));
-        }
+        dispatch(setConnectionStatus(isHealthy ? 'connected' : 'offline'));
       } catch {
         dispatch(setConnectionStatus('offline'));
-      } finally {
-        isChecking = false;
       }
     };
 
@@ -88,32 +82,20 @@ function App() {
     };
 
     const handleOnline = () => {
-      checkBackend();
+      checkInitialBackend();
     };
 
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
 
-    // If browser is offline or application went offline, do not poll health requests
-    if (!navigator.onLine || connectionStatus === 'offline') {
-      return () => {
-        window.removeEventListener('offline', handleOffline);
-        window.removeEventListener('online', handleOnline);
-      };
-    }
-
-    // Run check immediately when online/connected
-    checkBackend();
-
-    // Poll every 5 seconds only while connected
-    checkInterval = setInterval(checkBackend, 5000);
+    // Initial check on mount only
+    checkInitialBackend();
 
     return () => {
-      if (checkInterval) clearInterval(checkInterval);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, [dispatch, connectionStatus]);
+  }, [dispatch]);
 
   // Load projects list for the dashboard
   useEffect(() => {
@@ -128,14 +110,12 @@ function App() {
         let dbProjects: TypstProject[];
         
         if (connectionStatus === 'connected' && currentUser) {
-          // Sync any offline created projects/files to Go backend
-          await syncOfflineDataToServer(currentUser);
           await migrateLegacyProjectsToUser(currentUser.username);
           dbProjects = await getProjectsForUserFromDB(currentUser.username);
           
           if (!dbProjects || dbProjects.length === 0) {
             const defaultProj = {
-              id: `proj_default_${Date.now()}`,
+              id: crypto.randomUUID(),
               name: 'My First Project',
               createdAt: Date.now(),
               updatedAt: Date.now(),
@@ -149,7 +129,7 @@ function App() {
           
           if (!dbProjects || dbProjects.length === 0) {
             const defaultProj = {
-              id: `proj_default_${Date.now()}`,
+              id: crypto.randomUUID(),
               name: 'My First Project',
               createdAt: Date.now(),
               updatedAt: Date.now()
@@ -169,133 +149,53 @@ function App() {
 
   // Handle hash-based routing (project selection/loading)
   useEffect(() => {
-    // If online (connected) and no user is logged in, redirect to login page (except if on login/register screen)
-    if (connectionStatus === 'connected' && !currentUser) {
-      dispatch(setCurrentProjectId(null));
-      if (screen !== 'login' && screen !== 'register') {
-        dispatch(setScreen('login'));
-      }
-      if (window.location.hash.startsWith('#/project/')) {
-        window.location.hash = '#/';
-      }
-      return;
-    }
-
     const handleHashChange = async () => {
       const hash = window.location.hash;
       if (hash.startsWith('#/project/')) {
         const projectId = hash.replace('#/project/', '');
+        dispatch(setCurrentProjectId(projectId));
         
         try {
           await initDB();
           
-          // Verify project existence and authorization
-          let authorized = false;
-          if (connectionStatus === 'connected' && currentUser) {
+          // Perform project sync if connected
+          if (connectionStatus === 'connected') {
             try {
-              const serverProj = await api.getProjectDetails(projectId);
-              if (serverProj) {
-                authorized = true;
-                // Cache/Update project info locally
-                await saveProjectToDB({
-                  id: serverProj.id,
-                  name: serverProj.name,
-                  createdAt: serverProj.created_at ? new Date(serverProj.created_at).getTime() : Date.now(),
-                  updatedAt: serverProj.updated_at ? new Date(serverProj.updated_at).getTime() : Date.now(),
-                  ownerId: currentUser.username
-                });
-              }
-            } catch (err) {
-              console.warn('Failed to verify project with server, checking local IndexedDB:', err);
-              const userProjects = await getProjectsForUserFromDB(currentUser.username);
-              authorized = userProjects.some(p => p.id === projectId);
+              await syncProjectWithServer(projectId, currentUser || undefined);
+            } catch (syncErr) {
+              console.warn('Sync failed, switching to offline mode:', syncErr);
+              dispatch(setConnectionStatus('offline'));
             }
-          } else {
-            const allProjects = await getAllProjectsFromDB();
-            authorized = allProjects.some(p => p.id === projectId);
           }
 
+          // Verify project existence in IndexedDB
+          const allProjects = await getAllProjectsFromDB();
+          const authorized = allProjects.some(p => p.id === projectId);
+
           if (!authorized) {
-            console.warn('Project not found or unauthorized access');
+            console.warn('Project not found locally or on server');
             window.location.hash = '#/';
             return;
           }
 
-          let reduxFiles: TypstFile[] = [];
-          let loadedFromBackend = false;
-
-          if (connectionStatus === 'connected') {
-            try {
-              const serverFiles = await api.getProjectFiles(projectId);
-              for (const file of serverFiles) {
-                if (file.type === 'typst') {
-                  const typstFileDetails = await api.getTypstFile(file.id);
-                  const cells = typstFileDetails.blocks ? typstFileDetails.blocks.map((b: any) => ({
-                    id: b.id,
-                    content: b.content,
-                    title: b.name
-                  })) : [];
-
-                  reduxFiles.push({
-                    path: file.name,
-                    isBinary: false,
-                    cells,
-                    backendId: file.id
-                  });
-
-                  // Cache locally
-                  await saveFileToDB({
-                    id: `${projectId}:${file.name}`,
-                    projectId,
-                    path: file.name,
-                    isBinary: false,
-                    cells
-                  });
-                } else if (file.type === 'binary') {
-                  const rawBuffer = await api.getBinaryFileRaw(file.id);
-                  const binaryData = new Uint8Array(rawBuffer);
-
-                  reduxFiles.push({
-                    path: file.name,
-                    isBinary: true,
-                    binaryData,
-                    backendId: file.id
-                  });
-
-                  // Cache locally
-                  await saveFileToDB({
-                    id: `${projectId}:${file.name}`,
-                    projectId,
-                    path: file.name,
-                    isBinary: true,
-                    binaryData
-                  });
-                }
-              }
-              loadedFromBackend = true;
-            } catch (err) {
-              console.error('Failed to sync files from server, falling back to local files:', err);
+          const dbFiles = await getFilesForProjectFromDB(projectId);
+          const reduxFiles: TypstFile[] = dbFiles.map(f => {
+            if (f.isBinary) {
+              return {
+                path: f.path,
+                isBinary: true,
+                binaryData: f.binaryData!,
+                fileUuid: f.fileUuid
+              };
+            } else {
+              return {
+                path: f.path,
+                isBinary: false,
+                cells: f.cells || [],
+                fileUuid: f.fileUuid
+              };
             }
-          }
-
-          if (!loadedFromBackend) {
-            const dbFiles = await getFilesForProjectFromDB(projectId);
-            reduxFiles = dbFiles.map(f => {
-              if (f.isBinary) {
-                return {
-                  path: f.path,
-                  isBinary: true,
-                  binaryData: f.binaryData!
-                };
-              } else {
-                return {
-                  path: f.path,
-                  isBinary: false,
-                  cells: f.cells || []
-                };
-              }
-            });
-          }
+          });
 
           dispatch(initializeProject(reduxFiles));
           dispatch(setCurrentProjectId(projectId));

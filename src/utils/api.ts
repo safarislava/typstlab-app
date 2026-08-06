@@ -40,12 +40,18 @@ class ApiClient {
     }
   }
 
+  private onNetworkError: (() => void) | null = null;
+
   public registerTokenRefreshCallback(callback: (token: string) => void) {
     this.onTokenRefreshed = callback;
   }
 
   public registerAuthErrorCallback(callback: () => void) {
     this.onAuthError = callback;
+  }
+
+  public registerNetworkErrorCallback(callback: () => void) {
+    this.onNetworkError = callback;
   }
 
   private async request(path: string, options: RequestInit = {}): Promise<any> {
@@ -65,7 +71,15 @@ class ApiClient {
       headers
     };
 
-    let response = await fetch(url, config);
+    let response: Response;
+    try {
+      response = await fetch(url, config);
+    } catch (fetchErr) {
+      if (this.onNetworkError && path !== '/health') {
+        this.onNetworkError();
+      }
+      throw fetchErr;
+    }
 
     // Auto-refresh token if 401
     if (response.status === 401 && path !== '/login' && path !== '/register' && path !== '/refresh') {
@@ -149,6 +163,27 @@ class ApiClient {
     return this.request('/projects', {
       method: 'POST',
       body: JSON.stringify({ name })
+    });
+  }
+
+  public async createProjectWithId(id: string, name: string): Promise<{ id: string; name: string; updated_at: string }> {
+    return this.request('/projects', {
+      method: 'POST',
+      body: JSON.stringify({ id, name })
+    });
+  }
+
+  public async syncProject(projectId: string, files: any[]): Promise<{ instructions: any[] }> {
+    return this.request(`/projects/${projectId}/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ files })
+    });
+  }
+
+  public async createFileWithId(projectId: string, fileData: { id: string; name: string; type: 'typst' | 'binary'; content?: string }): Promise<any> {
+    return this.request(`/projects/${projectId}/files`, {
+      method: 'POST',
+      body: JSON.stringify(fileData)
     });
   }
 

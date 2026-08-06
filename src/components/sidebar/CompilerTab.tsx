@@ -3,18 +3,25 @@ import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { setConnectionStatus } from '../../store/documentSlice';
 import { Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 
+import { api } from '../../utils/api';
+
 export const CompilerTab: React.FC = () => {
   const dispatch = useAppDispatch();
   const { connectionStatus, compilerReady, compilerError } = useAppSelector(
     (state) => state.document
   );
 
-  const toggleConnection = () => {
-    dispatch(
-      setConnectionStatus(
-        connectionStatus === 'offline' ? 'connected' : 'offline'
-      )
-    );
+  const toggleConnection = async () => {
+    if (connectionStatus === 'offline') {
+      try {
+        const isHealthy = await api.checkHealth();
+        dispatch(setConnectionStatus(isHealthy ? 'connected' : 'offline'));
+      } catch {
+        dispatch(setConnectionStatus('offline'));
+      }
+    } else {
+      dispatch(setConnectionStatus('offline'));
+    }
   };
 
   return (

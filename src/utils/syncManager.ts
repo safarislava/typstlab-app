@@ -2,104 +2,181 @@ import { api } from './api';
 import { 
   getAllProjectsFromDB, 
   getFilesForProjectFromDB, 
-  saveProjectToDB, 
   saveFileToDB, 
-  deleteProjectFromDB, 
   deleteFileFromDB 
 } from '../store/db';
-import { encodeCellsToYjsDelta, uint8ArrayToBase64 } from './yjsSync';
+import { 
+  encodeCellsToYjsDelta, 
+  encodeYjsStateVector, 
+  applyYjsDelta, 
+  decodeYjsDeltaToCells, 
+  uint8ArrayToBase64 
+} from './yjsSync';
 import type { User } from '../store/documentSlice';
 
+export interface SyncFileManifest {
+  id: string;
+  name: string;
+  type: 'typst' | 'binary';
+  yjs_state_vector?: string;
+  checksum?: string;
+}
+
+export interface SyncInstruction {
+  action: 'upload' | 'download' | 'apply_changes' | 'rename' | 'delete';
+  file_id: string;
+  new_name?: string;
+  payload?: string;
+}
+
+const inFlightSyncs = new Map<string, Promise<boolean>>();
+
 /**
- * Synchronizes offline created projects and files to the server.
- * When a project starts with "proj_" prefix, it was created offline.
- * This function registers it on the Go backend server, uploads its files,
- * updates the local IndexedDB IDs to match server UUIDs, and handles hash updates.
+ * Synchronizes a single project with the server using the POST /projects/{projectID}/sync specification.
+ * Parallel/duplicate calls for the same projectId are deduplicated into a single in-flight promise.
  */
-export async function syncOfflineDataToServer(currentUser: User): Promise<void> {
-  try {
-    const allProjects = await getAllProjectsFromDB();
-    const offlineProjects = allProjects.filter(p => p.id.startsWith('proj_'));
+export async function syncProjectWithServer(projectId: string, _currentUser?: User): Promise<boolean> {
+  if (inFlightSyncs.has(projectId)) {
+    return inFlightSyncs.get(projectId)!;
+  }
 
-    if (offlineProjects.length === 0) {
-      return;
-    }
-
-    console.log(`Syncing ${offlineProjects.length} offline projects to server...`);
-
-    for (const project of offlineProjects) {
+  const syncPromise = (async () => {
+    try {
+      // 1. Check if project exists on server, create if missing (404)
       try {
-        // 1. Create project on server
-        const serverProj = await api.createProject(project.name);
-        const serverProjectId = serverProj.id;
+        await api.getProjectDetails(projectId);
+      } catch (err) {
+        // Server returned 404. Create the project on server passing the client's UUID.
+        const localProjects = await getAllProjectsFromDB();
+        const localProj = localProjects.find(p => p.id === projectId);
+        const projName = localProj?.name || 'Untitled Project';
+        try {
+          await api.createProjectWithId(projectId, projName);
+        } catch (createErr) {
+          console.warn('Failed to create project with client UUID on server:', createErr);
+        }
+      }
 
-        // 2. Fetch local files of this offline project
-        const localFiles = await getFilesForProjectFromDB(project.id);
+      // 2. Build local files manifest with valid client UUIDs
+      const localFiles = await getFilesForProjectFromDB(projectId);
+      const manifestFiles: SyncFileManifest[] = [];
 
-        for (const file of localFiles) {
+      for (const file of localFiles) {
+        let fileUuid = file.fileUuid;
+        if (!fileUuid || !fileUuid.includes('-')) {
+          fileUuid = crypto.randomUUID();
+          file.fileUuid = fileUuid;
+          await saveFileToDB(file);
+        }
+
+        manifestFiles.push({
+          id: fileUuid,
+          name: file.path,
+          type: file.isBinary ? 'binary' : 'typst',
+          yjs_state_vector: file.isBinary ? undefined : encodeYjsStateVector(file.cells || [])
+        });
+      }
+
+      // 3. Send POST /projects/{projectID}/sync manifest request
+      let syncResponse: { instructions: SyncInstruction[] } = { instructions: [] };
+      try {
+        syncResponse = await api.syncProject(projectId, manifestFiles);
+      } catch (syncErr) {
+        // Fallback: If POST /projects/{projectID}/sync is not supported by server, upload missing files directly
+        for (const localFile of localFiles) {
           try {
-            if (file.isBinary && file.binaryData) {
-              // Upload binary file
-              const base64Content = uint8ArrayToBase64(file.binaryData);
-              await api.createBinaryFile(serverProjectId, file.path, base64Content);
-
-              // Cache under new server project ID
-              await saveFileToDB({
-                id: `${serverProjectId}:${file.path}`,
-                projectId: serverProjectId,
-                path: file.path,
-                isBinary: true,
-                binaryData: file.binaryData
-              });
+            if (localFile.isBinary && localFile.binaryData) {
+              const base64Content = uint8ArrayToBase64(localFile.binaryData);
+              await api.createBinaryFile(projectId, localFile.path, base64Content);
             } else {
-              // Create typst file
-              const createdFile = await api.createTypstFile(serverProjectId, file.path);
-              const serverFileId = createdFile.id;
-
-              // Upload cells contents
-              const delta = encodeCellsToYjsDelta(file.cells || []);
-              await api.sendTypstFileChanges(serverFileId, delta);
-
-              // Cache under new server project ID
-              await saveFileToDB({
-                id: `${serverProjectId}:${file.path}`,
-                projectId: serverProjectId,
-                path: file.path,
-                isBinary: false,
-                cells: file.cells
-              });
+              const createdFile = await api.createTypstFile(projectId, localFile.path);
+              const delta = encodeCellsToYjsDelta(localFile.cells || []);
+              await api.sendTypstFileChanges(createdFile.id, delta);
             }
-
-            // Delete old file cache
-            await deleteFileFromDB(project.id, file.path);
-          } catch (fileErr) {
-            console.error(`Failed to sync file ${file.path} for project ${project.name}:`, fileErr);
+          } catch {
+            // Ignore fallback errors
           }
         }
-
-        // 3. Save new project metadata locally
-        await saveProjectToDB({
-          id: serverProjectId,
-          name: project.name,
-          createdAt: project.createdAt,
-          updatedAt: Date.now(),
-          ownerId: currentUser.username
-        });
-
-        // 4. Delete old project from local DB
-        await deleteProjectFromDB(project.id);
-
-        // 5. Update URL hash if this project was open
-        if (window.location.hash === `#/project/${project.id}`) {
-          window.location.hash = `#/project/${serverProjectId}`;
-        }
-      } catch (projErr) {
-        console.error(`Failed to sync project ${project.name} to server:`, projErr);
       }
-    }
 
-    console.log('Offline synchronization completed successfully.');
-  } catch (err) {
-    console.error('Error during offline synchronization:', err);
-  }
+      const instructions = syncResponse.instructions || [];
+
+      // 4. Process returned instructions
+      for (const inst of instructions) {
+        try {
+          const fileId = inst.file_id;
+          const fileName = fileId.includes(':') ? fileId.split(':').slice(1).join(':') : fileId;
+          const localFile = localFiles.find(f => f.fileUuid === fileId || f.path === fileName || f.id === fileId);
+
+          if (inst.action === 'upload') {
+            if (localFile) {
+              if (localFile.isBinary && localFile.binaryData) {
+                const base64Content = uint8ArrayToBase64(localFile.binaryData);
+                await api.createFileWithId(projectId, {
+                  id: fileId,
+                  name: localFile.path,
+                  type: 'binary',
+                  content: base64Content
+                });
+              } else {
+                const createdFile = await api.createFileWithId(projectId, {
+                  id: fileId,
+                  name: localFile.path,
+                  type: 'typst'
+                });
+                const delta = encodeCellsToYjsDelta(localFile.cells || []);
+                await api.sendTypstFileChanges(createdFile.id || fileId, delta);
+              }
+            }
+          } else if (inst.action === 'download') {
+            if (inst.payload) {
+              const cells = decodeYjsDeltaToCells(inst.payload);
+              await saveFileToDB({
+                id: `${projectId}:${fileName}`,
+                projectId,
+                path: fileName,
+                isBinary: false,
+                cells
+              });
+            }
+          } else if (inst.action === 'apply_changes') {
+            if (localFile && !localFile.isBinary && inst.payload) {
+              const updatedCells = applyYjsDelta(localFile.cells || [], inst.payload);
+              await saveFileToDB({
+                id: `${projectId}:${fileName}`,
+                projectId,
+                path: fileName,
+                isBinary: false,
+                cells: updatedCells
+              });
+            }
+          } else if (inst.action === 'rename' && inst.new_name) {
+            if (localFile) {
+              await deleteFileFromDB(projectId, localFile.path);
+              await saveFileToDB({
+                ...localFile,
+                id: `${projectId}:${inst.new_name}`,
+                projectId,
+                path: inst.new_name
+              });
+            }
+          } else if (inst.action === 'delete') {
+            await deleteFileFromDB(projectId, fileName);
+          }
+        } catch (instErr) {
+          console.error(`Failed to execute sync instruction ${inst.action}:`, instErr);
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error(`Failed to sync project ${projectId}:`, err);
+      return false;
+    } finally {
+      inFlightSyncs.delete(projectId);
+    }
+  })();
+
+  inFlightSyncs.set(projectId, syncPromise);
+  return syncPromise;
 }

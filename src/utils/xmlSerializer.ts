@@ -91,7 +91,8 @@ export function parseXmlToCells(xmlString: string): Cell[] {
 
   for (let i = 0; i < blockNodes.length; i++) {
     const node = blockNodes[i];
-    const id = node.getAttribute('id') || `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const rawId = node.getAttribute('id');
+    const id = (rawId && rawId.includes('-') && !rawId.startsWith('cell-')) ? rawId : crypto.randomUUID();
     const title = node.getAttribute('name') || undefined;
     const cleanedContent = cleanXmlBlockContent(node.textContent || '');
 

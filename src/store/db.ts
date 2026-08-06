@@ -10,6 +10,7 @@ export interface TypstProject {
 
 export interface DBTypstFile {
   id: string; // "projectId:path"
+  fileUuid?: string; // Valid UUID for backend sync
   projectId: string;
   path: string;
   isBinary?: boolean;

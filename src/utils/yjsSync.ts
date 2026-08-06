@@ -11,7 +11,8 @@ export function encodeCellsToYjsDelta(cells: Cell[]): string {
 
   const ymaps = cells.map(cell => {
     const ymap = new Y.Map();
-    ymap.set('id', cell.id);
+    const validCellId = (cell.id && cell.id.includes('-') && !cell.id.startsWith('cell-')) ? cell.id : crypto.randomUUID();
+    ymap.set('id', validCellId);
     ymap.set('name', cell.title || '');
     ymap.set('content', cell.content || '');
     return ymap;
@@ -40,8 +41,10 @@ export function decodeYjsDeltaToCells(base64Update: string): Cell[] {
     for (let i = 0; i < yarray.length; i++) {
       const ymap = yarray.get(i) as Y.Map<any>;
       if (ymap && typeof ymap.get === 'function') {
+        const rawId = ymap.get('id');
+        const validId = (rawId && typeof rawId === 'string' && rawId.includes('-') && !rawId.startsWith('cell-')) ? rawId : crypto.randomUUID();
         cells.push({
-          id: ymap.get('id') || `cell-sync-${Date.now()}-${i}`,
+          id: validId,
           content: ymap.get('content') || '',
           title: ymap.get('name') || ''
         });
@@ -74,4 +77,73 @@ export function base64ToUint8Array(base64: string): Uint8Array {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
+}
+
+/**
+ * Encodes the Yjs State Vector of visual cells to base64 string (~10-100 bytes).
+ */
+export function encodeYjsStateVector(cells: Cell[]): string {
+  try {
+    const ydoc = new Y.Doc();
+    const yarray = ydoc.getArray('blocks');
+
+    const ymaps = cells.map(cell => {
+      const ymap = new Y.Map();
+      const validCellId = (cell.id && cell.id.includes('-') && !cell.id.startsWith('cell-')) ? cell.id : crypto.randomUUID();
+      ymap.set('id', validCellId);
+      ymap.set('name', cell.title || '');
+      ymap.set('content', cell.content || '');
+      return ymap;
+    });
+
+    yarray.insert(0, ymaps);
+
+    const sv = Y.encodeStateVector(ydoc);
+    return uint8ArrayToBase64(sv);
+  } catch (err) {
+    console.error('Failed to encode Yjs state vector:', err);
+    return '';
+  }
+}
+
+/**
+ * Applies a Yjs update delta to existing cells and returns the updated cells array.
+ */
+export function applyYjsDelta(cells: Cell[], base64Update: string): Cell[] {
+  try {
+    const ydoc = new Y.Doc();
+    const yarray = ydoc.getArray('blocks');
+
+    // Populate initial state into doc
+    const ymaps = cells.map(cell => {
+      const ymap = new Y.Map();
+      ymap.set('id', cell.id);
+      ymap.set('name', cell.title || '');
+      ymap.set('content', cell.content || '');
+      return ymap;
+    });
+    yarray.insert(0, ymaps);
+
+    // Apply update from server
+    const binary = base64ToUint8Array(base64Update);
+    Y.applyUpdate(ydoc, binary);
+
+    // Re-extract updated cells
+    const updatedCells: Cell[] = [];
+    for (let i = 0; i < yarray.length; i++) {
+      const ymap = yarray.get(i) as Y.Map<any>;
+      if (ymap && typeof ymap.get === 'function') {
+        updatedCells.push({
+          id: ymap.get('id') || `cell-${Date.now()}-${i}`,
+          content: ymap.get('content') || '',
+          title: ymap.get('name') || ''
+        });
+      }
+    }
+
+    return updatedCells;
+  } catch (err) {
+    console.error('Failed to apply Yjs update:', err);
+    return cells;
+  }
 }

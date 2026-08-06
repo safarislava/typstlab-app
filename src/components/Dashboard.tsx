@@ -25,20 +25,30 @@ export const Dashboard: React.FC = () => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
-    let projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const clientUuid = crypto.randomUUID();
+    let projectId: string = clientUuid;
     let createdAt = Date.now();
     let updatedAt = Date.now();
 
     if (connectionStatus === 'connected') {
       try {
-        const response = await api.createProject(newProjectName.trim());
-        projectId = response.id;
-        if (response.updated_at) {
+        const response = await api.createProjectWithId(clientUuid, newProjectName.trim());
+        if (response && response.id) {
+          projectId = response.id;
+        }
+        if (response && response.updated_at) {
           createdAt = new Date(response.updated_at).getTime();
           updatedAt = createdAt;
         }
       } catch (err) {
-        console.error('Failed to create project on server:', err);
+        try {
+          const fallbackResp = await api.createProject(newProjectName.trim());
+          if (fallbackResp && fallbackResp.id) {
+            projectId = fallbackResp.id;
+          }
+        } catch {
+          console.warn('Backend creation failed, keeping client UUID for offline sync:', err);
+        }
       }
     }
 

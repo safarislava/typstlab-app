@@ -17,16 +17,36 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleSaveCreate = (name: string) => {
-    let filename = name;
-    if (!filename.endsWith('.typxml')) {
-      filename += '.typxml';
+    try {
+      let filename = name.trim();
+      if (!filename) {
+        filename = 'untitled.typxml';
+      }
+      if (!filename.includes('.')) {
+        filename += '.typxml';
+      }
+      
+      // Auto-resolve duplicate file names by appending incrementing number
+      if (files[filename]) {
+        const dotIndex = filename.lastIndexOf('.');
+        const baseName = dotIndex !== -1 ? filename.substring(0, dotIndex) : filename;
+        const ext = dotIndex !== -1 ? filename.substring(dotIndex) : '.typxml';
+        
+        let counter = 1;
+        let candidate = `${baseName}_${counter}${ext}`;
+        while (files[candidate]) {
+          counter++;
+          candidate = `${baseName}_${counter}${ext}`;
+        }
+        filename = candidate;
+      }
+
+      dispatch(addFile({ path: filename }));
+    } catch (err) {
+      console.error('Failed to create file:', err);
+    } finally {
+      setIsCreating(false);
     }
-    if (files[filename]) {
-      alert('A file with this name already exists.');
-      return;
-    }
-    dispatch(addFile({ path: filename }));
-    setIsCreating(false);
   };
 
   const handleRename = (oldPath: string, newPath: string) => {
@@ -104,7 +124,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
       <div className="pane-header">
         <span>Files</span>
         <button
-          onClick={() => setIsCreating(true)}
+          onClick={() => setIsCreating(prev => !prev)}
           className="create-file-btn"
           title="Create new file"
         >

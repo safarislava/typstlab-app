@@ -13,6 +13,8 @@ import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
 import { initDB, saveProjectToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
 import type { TypstProject } from './store/db';
+import { api } from './utils/api';
+import { syncProjectWithServer } from './utils/syncManager';
 
 let wasmInitialized = false;
 
@@ -52,42 +54,46 @@ function App() {
     initWasm();
   }, [dispatch]);
 
-  // Poll backend (WebSocket LSP) availability to update online/offline connectionStatus
+  // Register global network error listener to transition to offline state when API calls fail
   useEffect(() => {
-    let checkInterval: any;
-    let isChecking = false;
+    api.registerNetworkErrorCallback(() => {
+      dispatch(setConnectionStatus('offline'));
+    });
+  }, [dispatch]);
 
-    const checkBackend = () => {
-      if (isChecking) return;
-      isChecking = true;
+  // Check backend (HTTP /health) availability ONLY once on site startup and on browser online event
+  useEffect(() => {
+    const checkInitialBackend = async () => {
+      if (!navigator.onLine) {
+        dispatch(setConnectionStatus('offline'));
+        return;
+      }
 
       try {
-        const socket = new WebSocket('ws://localhost:8080/lsp');
-        
-        socket.onopen = () => {
-          dispatch(setConnectionStatus('connected'));
-          socket.close();
-          isChecking = false;
-        };
-
-        socket.onerror = () => {
-          dispatch(setConnectionStatus('offline'));
-          isChecking = false;
-        };
+        const isHealthy = await api.checkHealth();
+        dispatch(setConnectionStatus(isHealthy ? 'connected' : 'offline'));
       } catch {
         dispatch(setConnectionStatus('offline'));
-        isChecking = false;
       }
     };
 
-    // Run check immediately on mount
-    checkBackend();
+    const handleOffline = () => {
+      dispatch(setConnectionStatus('offline'));
+    };
 
-    // Poll every 5 seconds to track backend online/offline state changes
-    checkInterval = setInterval(checkBackend, 5000);
+    const handleOnline = () => {
+      checkInitialBackend();
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    // Initial check on mount only
+    checkInitialBackend();
 
     return () => {
-      clearInterval(checkInterval);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
     };
   }, [dispatch]);
 
@@ -109,7 +115,7 @@ function App() {
           
           if (!dbProjects || dbProjects.length === 0) {
             const defaultProj = {
-              id: `proj_default_${Date.now()}`,
+              id: crypto.randomUUID(),
               name: 'My First Project',
               createdAt: Date.now(),
               updatedAt: Date.now(),
@@ -123,7 +129,7 @@ function App() {
           
           if (!dbProjects || dbProjects.length === 0) {
             const defaultProj = {
-              id: `proj_default_${Date.now()}`,
+              id: crypto.randomUUID(),
               name: 'My First Project',
               createdAt: Date.now(),
               updatedAt: Date.now()
@@ -143,37 +149,31 @@ function App() {
 
   // Handle hash-based routing (project selection/loading)
   useEffect(() => {
-    // If online (connected) and no user is logged in, redirect to login page
-    if (connectionStatus === 'connected' && !currentUser) {
-      dispatch(setCurrentProjectId(null));
-      if (window.location.hash.startsWith('#/project/')) {
-        window.location.hash = '#/';
-      }
-      return;
-    }
-
     const handleHashChange = async () => {
       const hash = window.location.hash;
       if (hash.startsWith('#/project/')) {
         const projectId = hash.replace('#/project/', '');
+        dispatch(setCurrentProjectId(projectId));
         
         try {
           await initDB();
           
-          // Verify project existence and authorization
-          let authorized = false;
+          // Perform project sync if connected
           if (connectionStatus === 'connected') {
-            if (currentUser) {
-              const userProjects = await getProjectsForUserFromDB(currentUser.username);
-              authorized = userProjects.some(p => p.id === projectId);
+            try {
+              await syncProjectWithServer(projectId, currentUser || undefined);
+            } catch (syncErr) {
+              console.warn('Sync failed, switching to offline mode:', syncErr);
+              dispatch(setConnectionStatus('offline'));
             }
-          } else {
-            const allProjects = await getAllProjectsFromDB();
-            authorized = allProjects.some(p => p.id === projectId);
           }
 
+          // Verify project existence in IndexedDB
+          const allProjects = await getAllProjectsFromDB();
+          const authorized = allProjects.some(p => p.id === projectId);
+
           if (!authorized) {
-            console.warn('Project not found or unauthorized access');
+            console.warn('Project not found locally or on server');
             window.location.hash = '#/';
             return;
           }
@@ -184,16 +184,19 @@ function App() {
               return {
                 path: f.path,
                 isBinary: true,
-                binaryData: f.binaryData!
+                binaryData: f.binaryData!,
+                fileUuid: f.fileUuid
               };
             } else {
               return {
                 path: f.path,
                 isBinary: false,
-                cells: f.cells || []
+                cells: f.cells || [],
+                fileUuid: f.fileUuid
               };
             }
           });
+
           dispatch(initializeProject(reduxFiles));
           dispatch(setCurrentProjectId(projectId));
         } catch (err) {
@@ -213,7 +216,7 @@ function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [dispatch, connectionStatus, currentUser]);
+  }, [dispatch, connectionStatus, currentUser, screen]);
 
   // Sidebar drag resizer handler
   const startSidebarResize = (mouseDownEvent: React.MouseEvent) => {
@@ -280,22 +283,16 @@ function App() {
     ? `calc((100% - ${actualSidebarWidth}px) * ${editorPercent} / 100 - 3px)`
     : '100%';
 
-  if (connectionStatus === 'offline') {
-    if (screen === 'login' || screen === 'register' || screen === 'dashboard') {
-      return <Dashboard />;
-    }
-  } else {
-    if (screen === 'login') {
-      return <Login />;
-    }
+  if (screen === 'login') {
+    return <Login />;
+  }
 
-    if (screen === 'register') {
-      return <Register />;
-    }
+  if (screen === 'register') {
+    return <Register />;
+  }
 
-    if (screen === 'dashboard') {
-      return <Dashboard />;
-    }
+  if (screen === 'dashboard') {
+    return <Dashboard />;
   }
 
   return (

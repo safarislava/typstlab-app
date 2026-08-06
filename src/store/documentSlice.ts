@@ -2,6 +2,8 @@ import type {PayloadAction} from '@reduxjs/toolkit';
 import {createSlice} from '@reduxjs/toolkit';
 import type {TypstProject} from './db';
 import {parseXmlToCells} from '../utils/xmlSerializer';
+import {api} from '../utils/api';
+
 
 export interface Cell {
   id: string;
@@ -13,12 +15,14 @@ export interface TextTypstFile {
   path: string;
   isBinary?: false;
   cells: Cell[];
+  fileUuid?: string;
 }
 
 export interface BinaryTypstFile {
   path: string;
   isBinary: true;
   binaryData: Uint8Array;
+  fileUuid?: string;
 }
 
 export type TypstFile = TextTypstFile | BinaryTypstFile;
@@ -63,7 +67,7 @@ const initialState: DocumentState = {
   activeCellId: null,
   previewMode: 'side-by-side',
   isCompiling: false,
-  connectionStatus: 'offline',
+  connectionStatus: 'connected',
   compilerReady: false,
   compilerError: null,
   currentProjectId: null,
@@ -104,7 +108,7 @@ const documentSlice = createSlice({
       const activeFile = state.files[state.activeFilePath];
       if (activeFile && !activeFile.isBinary) {
         const newCell: Cell = {
-          id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          id: crypto.randomUUID(),
           content: ''
         };
         activeFile.cells.splice(index, 0, newCell);
@@ -146,6 +150,17 @@ const documentSlice = createSlice({
     },
     setConnectionStatus: (state, action: PayloadAction<'connected' | 'connecting' | 'offline'>) => {
       state.connectionStatus = action.payload;
+      if (action.payload === 'connected' && !state.currentUser) {
+        if (state.screen !== 'login' && state.screen !== 'register') {
+          state.screen = 'login';
+          state.currentProjectId = null;
+          state.files = {};
+          state.activeFilePath = '';
+          state.activeCellId = null;
+        }
+      } else if (action.payload === 'offline' && (state.screen === 'login' || state.screen === 'register')) {
+        state.screen = 'dashboard';
+      }
     },
     setCompilerReady: (state, action: PayloadAction<boolean>) => {
       state.compilerReady = action.payload;
@@ -162,7 +177,9 @@ const documentSlice = createSlice({
       state.currentProjectId = action.payload;
       const isOffline = state.connectionStatus === 'offline';
       if (action.payload === null) {
-        state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
+        if (state.screen !== 'login' && state.screen !== 'register') {
+          state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
+        }
         state.files = {};
         state.activeFilePath = '';
         state.activeCellId = null;
@@ -208,6 +225,7 @@ const documentSlice = createSlice({
       state.activeFilePath = '';
       state.activeCellId = null;
       localStorage.removeItem('typstlab_user');
+      api.setToken(null);
     },
     
     // Multi-file actions
@@ -218,23 +236,9 @@ const documentSlice = createSlice({
         loadedFiles.forEach(f => {
           state.files[f.path] = f;
         });
-      } else {
-        // Initialize default main.typxml if empty
-        const defaultPath = 'main.typxml';
-        state.files[defaultPath] = {
-          path: defaultPath,
-          isBinary: false,
-          cells: [
-            {
-              id: `cell-default-1`,
-              content: '= Welcome to TypstLab\n\nThis is your new project. Start editing!\n',
-              title: 'Welcome'
-            }
-          ]
-        };
       }
       const paths = Object.keys(state.files);
-      state.activeFilePath = paths[0] || 'main.typxml';
+      state.activeFilePath = paths[0] || '';
       const activeFile = state.files[state.activeFilePath];
       state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
     },
@@ -244,9 +248,10 @@ const documentSlice = createSlice({
       const newFile: TextTypstFile = {
         path,
         isBinary: false,
+        fileUuid: crypto.randomUUID(),
         cells: [
           {
-            id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            id: crypto.randomUUID(),
             content: `// ${path}\n`
           }
         ]
@@ -276,15 +281,8 @@ const documentSlice = createSlice({
           const activeFile = state.files[keys[0]];
           state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
         } else {
-          // Re-create default main.typxml if all deleted
-          const defaultPath = 'main.typxml';
-          state.files[defaultPath] = {
-            path: defaultPath,
-            isBinary: false,
-            cells: [{id: 'cell-default-1', content: '= Welcome to TypstLab\n'}]
-          };
-          state.activeFilePath = defaultPath;
-          state.activeCellId = 'cell-default-1';
+          state.activeFilePath = '';
+          state.activeCellId = null;
         }
       }
     },
@@ -298,6 +296,7 @@ const documentSlice = createSlice({
       state.files[path] = {
         path,
         isBinary: true,
+        fileUuid: crypto.randomUUID(),
         binaryData
       };
     },
@@ -312,7 +311,7 @@ const documentSlice = createSlice({
           console.warn('Failed to parse XML blocks, falling back to plain text:', err);
           cells = [
             {
-              id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+              id: crypto.randomUUID(),
               content,
               title: 'Imported Content'
             }
@@ -321,7 +320,7 @@ const documentSlice = createSlice({
       } else {
         cells = [
           {
-            id: `cell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            id: crypto.randomUUID(),
             content,
             title: 'Imported Content'
           }
@@ -331,6 +330,7 @@ const documentSlice = createSlice({
       state.files[path] = {
         path,
         isBinary: false,
+        fileUuid: crypto.randomUUID(),
         cells
       };
       state.activeFilePath = path;

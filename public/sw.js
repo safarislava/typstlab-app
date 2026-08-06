@@ -1,4 +1,4 @@
-const CACHE_NAME = 'typstlab-cache-v1';
+const CACHE_NAME = 'typstlab-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -35,46 +35,58 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // Ignore non-HTTP/HTTPS schemes (e.g. chrome-extension://, moz-extension://, data:)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
+  // Bypass backend API endpoints from Service Worker caching
+  if (
+    url.pathname === '/health' ||
+    url.pathname.endsWith('/health') ||
+    url.pathname.startsWith('/projects') ||
+    url.pathname.startsWith('/files') ||
+    url.pathname === '/login' ||
+    url.pathname === '/register' ||
+    url.pathname === '/refresh' ||
+    url.pathname === '/logout'
+  ) {
+    return;
+  }
+
+  // Network-first strategy with cache fallback to prevent React module version mismatch
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch in background to update cache
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
-              });
-            }
-          })
-          .catch(() => { /* Ignore offline fetch errors */ });
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
-        }
-
-        // Cache dynamic assets (app JS/CSS, fonts)
-        const url = event.request.url;
-        const isSelfOrigin = url.startsWith(self.location.origin);
-        const isCdn = url.includes('cdn.jsdelivr.net') || url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com');
-
-        if (isSelfOrigin || isCdn) {
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
         }
-
         return networkResponse;
-      }).catch((err) => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
+      })
+      .catch(async () => {
+        // Offline fallback: attempt exact match first, then ignore query parameters
+        const cachedResponse =
+          (await caches.match(event.request)) ||
+          (await caches.match(event.request, { ignoreSearch: true }));
+
+        if (cachedResponse) {
+          return cachedResponse;
         }
-        throw err;
-      });
-    })
+
+        // If navigating and offline, return cached root index.html
+        if (event.request.mode === 'navigate') {
+          return (await caches.match('/index.html')) || (await caches.match('/'));
+        }
+
+        return new Response('Offline resource not available', {
+          status: 503,
+          statusText: 'Service Unavailable'
+        });
+      })
   );
 });

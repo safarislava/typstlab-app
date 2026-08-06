@@ -13,42 +13,61 @@ export const FileCreateInput: React.FC<FileCreateInputProps> = ({ onSave, onCanc
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
+      inputRef.current.select();
     }
   }, []);
 
-  const handleCreateFile = () => {
-    const name = newFileName.trim();
-    if (name) {
-      onSave(name);
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    let name = newFileName.trim();
+    if (!name) {
+      name = 'untitled.typxml';
+    }
+    onSave(name);
   };
 
   return (
-    <div className="file-create-input-container">
+    <form
+      className="file-create-input-container"
+      onSubmit={handleSubmit}
+    >
       <input
         ref={inputRef}
         type="text"
-        placeholder="filename.typxml"
+        placeholder="untitled.typxml"
         value={newFileName}
         onChange={(e) => setNewFileName(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') handleCreateFile();
-          if (e.key === 'Escape') onCancel();
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            onCancel();
+          }
         }}
         className="file-create-input"
       />
       <button
-        onClick={handleCreateFile}
+        type="submit"
         className="file-create-btn"
+        title="Confirm"
       >
         <Check size={14} />
       </button>
       <button
-        onClick={onCancel}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        }}
         className="file-create-cancel-btn"
+        title="Cancel"
       >
         <X size={14} />
       </button>
-    </div>
+    </form>
   );
 };

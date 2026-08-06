@@ -236,23 +236,9 @@ const documentSlice = createSlice({
         loadedFiles.forEach(f => {
           state.files[f.path] = f;
         });
-      } else {
-        // Initialize default main.typxml if empty
-        const defaultPath = 'main.typxml';
-        state.files[defaultPath] = {
-          path: defaultPath,
-          isBinary: false,
-          cells: [
-            {
-              id: crypto.randomUUID(),
-              content: '= Welcome to TypstLab\n\nThis is your new project. Start editing!\n',
-              title: 'Welcome'
-            }
-          ]
-        };
       }
       const paths = Object.keys(state.files);
-      state.activeFilePath = paths[0] || 'main.typxml';
+      state.activeFilePath = paths[0] || '';
       const activeFile = state.files[state.activeFilePath];
       state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
     },
@@ -295,15 +281,8 @@ const documentSlice = createSlice({
           const activeFile = state.files[keys[0]];
           state.activeCellId = (activeFile && !activeFile.isBinary) ? activeFile.cells[0]?.id || null : null;
         } else {
-          // Re-create default main.typxml if all deleted
-          const defaultPath = 'main.typxml';
-          state.files[defaultPath] = {
-            path: defaultPath,
-            isBinary: false,
-            cells: [{id: 'cell-default-1', content: '= Welcome to TypstLab\n'}]
-          };
-          state.activeFilePath = defaultPath;
-          state.activeCellId = 'cell-default-1';
+          state.activeFilePath = '';
+          state.activeCellId = null;
         }
       }
     },

@@ -1,7 +1,7 @@
 import type { Middleware } from '@reduxjs/toolkit';
 import { saveFileToDB, deleteFileFromDB, saveProjectToDB, deleteProjectFromDB } from './db';
 import { api } from '../utils/api';
-import { encodeCellsToYjsDelta, uint8ArrayToBase64 } from '../utils/yjsSync';
+import { encodeCellsToYjsDelta, uint8ArrayToBase64, updateFileYjsState } from '../utils/yjsSync';
 
 const fileSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const SYNC_DEBOUNCE_MS = 600;
@@ -61,10 +61,16 @@ export const dbMiddleware: Middleware = store => next => action => {
               name: targetPath,
               type: 'typst'
             })
-              .then(async () => {
-                const delta = encodeCellsToYjsDelta(fileToSave.cells || []);
+              .then(async (res) => {
+                if (res?.state) {
+                  updateFileYjsState(fileUuid, res.state);
+                }
+                const delta = encodeCellsToYjsDelta(fileUuid, fileToSave.cells || []);
                 if (delta) {
-                  await api.sendTypstFileChanges(fileUuid, delta);
+                  const sendRes = await api.sendTypstFileChanges(fileUuid, delta);
+                  if (sendRes?.state) {
+                    updateFileYjsState(fileUuid, sendRes.state);
+                  }
                 }
               })
               .catch(err => console.error('Failed to create typst file on server:', err));
@@ -91,9 +97,12 @@ export const dbMiddleware: Middleware = store => next => action => {
               if (!latestFile || latestFile.isBinary) return;
 
               try {
-                const delta = encodeCellsToYjsDelta(latestFile.cells || []);
+                const delta = encodeCellsToYjsDelta(fileUuid, latestFile.cells || []);
                 if (delta) {
-                  await api.sendTypstFileChanges(fileUuid, delta);
+                  const sendRes = await api.sendTypstFileChanges(fileUuid, delta);
+                  if (sendRes?.state) {
+                    updateFileYjsState(fileUuid, sendRes.state);
+                  }
                 }
               } catch (err) {
                 console.error('Failed to sync debounced file changes to server:', err);
@@ -148,7 +157,7 @@ export const dbMiddleware: Middleware = store => next => action => {
               type: 'typst'
             })
               .then(async () => {
-                const delta = encodeCellsToYjsDelta(fileToSave.cells || []);
+                const delta = encodeCellsToYjsDelta(fileUuid, fileToSave.cells || []);
                 await api.sendTypstFileChanges(fileUuid, delta);
               })
               .catch(err => console.error('Failed to recreate renamed typst file on server:', err));

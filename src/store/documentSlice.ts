@@ -67,7 +67,7 @@ const initialState: DocumentState = {
   activeCellId: null,
   previewMode: 'side-by-side',
   isCompiling: false,
-  connectionStatus: 'offline',
+  connectionStatus: 'connected',
   compilerReady: false,
   compilerError: null,
   currentProjectId: null,

@@ -26,9 +26,13 @@ class ApiClient {
 
   public async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`, {
+      const response = await fetch(`${this.baseUrl}/health?_t=${Date.now()}`, {
         method: 'GET',
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
       return response.status === 200;
     } catch {

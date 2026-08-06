@@ -3,19 +3,22 @@ import { saveFileToDB, deleteFileFromDB, saveProjectToDB, deleteProjectFromDB } 
 import { api } from '../utils/api';
 import { encodeCellsToYjsDelta, uint8ArrayToBase64 } from '../utils/yjsSync';
 
+const fileSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const SYNC_DEBOUNCE_MS = 600;
+
 export const dbMiddleware: Middleware = store => next => action => {
   const type = (action as any).type;
 
   // Capture metadata before action changes the state
-  let deletedFileBackendId: string | undefined;
-  let renamedFileBackendId: string | undefined;
+  let deletedFileUuid: string | undefined;
+  let renamedFileUuid: string | undefined;
 
   if (type === 'document/deleteFile') {
     const path = (action as any).payload;
-    deletedFileBackendId = store.getState().document.files[path]?.backendId;
+    deletedFileUuid = store.getState().document.files[path]?.fileUuid;
   } else if (type === 'document/renameFile') {
     const { oldPath } = (action as any).payload;
-    renamedFileBackendId = store.getState().document.files[oldPath]?.backendId;
+    renamedFileUuid = store.getState().document.files[oldPath]?.fileUuid;
   }
 
   const result = next(action);
@@ -39,7 +42,7 @@ export const dbMiddleware: Middleware = store => next => action => {
       if (fileToSave) {
         const fileUuid = fileToSave.fileUuid || crypto.randomUUID();
 
-        // Local IndexedDB persistence
+        // Local IndexedDB persistence (Instant)
         saveFileToDB({
           id: `${currentProjectId}:${targetPath}`,
           projectId: currentProjectId,
@@ -52,51 +55,52 @@ export const dbMiddleware: Middleware = store => next => action => {
 
         // Online Go backend synchronization
         if (state.connectionStatus === 'connected') {
-          if (fileToSave.backendId) {
-            // Already exists on server, sync edits
-            const fileId = fileToSave.backendId || fileUuid;
-            if (!fileToSave.isBinary) {
-              const delta = encodeCellsToYjsDelta(fileToSave.cells || []);
-              api.sendTypstFileChanges(fileId, delta)
-                .catch(err => console.error('Failed to sync file changes to server:', err));
-            }
-          } else {
-            // Needs to be created on server with client-generated file UUID
-            if (type === 'document/addFile' || type === 'document/addTextFileWithContent') {
-              api.createFileWithId(currentProjectId, {
-                id: fileUuid,
-                name: targetPath,
-                type: 'typst'
+          if (type === 'document/addFile' || type === 'document/addTextFileWithContent') {
+            api.createFileWithId(currentProjectId, {
+              id: fileUuid,
+              name: targetPath,
+              type: 'typst'
+            })
+              .then(async () => {
+                const delta = encodeCellsToYjsDelta(fileToSave.cells || []);
+                if (delta) {
+                  await api.sendTypstFileChanges(fileUuid, delta);
+                }
               })
-                .then(async (res) => {
-                  const createdId = res?.id || fileUuid;
-                  store.dispatch({
-                    type: 'document/setFileBackendId',
-                    payload: { path: targetPath, backendId: createdId }
-                  });
-                  const delta = encodeCellsToYjsDelta(fileToSave.cells || []);
-                  if (delta) {
-                    await api.sendTypstFileChanges(createdId, delta);
-                  }
-                })
-                .catch(err => console.error('Failed to create typst file on server:', err));
-            } else if (type === 'document/addBinaryFile') {
-              const base64Content = uint8ArrayToBase64((fileToSave as any).binaryData);
-              api.createFileWithId(currentProjectId, {
-                id: fileUuid,
-                name: targetPath,
-                type: 'binary',
-                content: base64Content
-              })
-                .then(res => {
-                  const createdId = res?.id || fileUuid;
-                  store.dispatch({
-                    type: 'document/setFileBackendId',
-                    payload: { path: targetPath, backendId: createdId }
-                  });
-                })
-                .catch(err => console.error('Failed to upload binary file to server:', err));
+              .catch(err => console.error('Failed to create typst file on server:', err));
+          } else if (type === 'document/addBinaryFile') {
+            const base64Content = uint8ArrayToBase64((fileToSave as any).binaryData);
+            api.createFileWithId(currentProjectId, {
+              id: fileUuid,
+              name: targetPath,
+              type: 'binary',
+              content: base64Content
+            })
+              .catch(err => console.error('Failed to upload binary file to server:', err));
+          } else if (!fileToSave.isBinary) {
+            // Edit actions (updateCellContent, updateCellTitle, addCell, deleteCell, moveCell)
+            if (fileSyncTimers.has(fileUuid)) {
+              clearTimeout(fileSyncTimers.get(fileUuid));
             }
+
+            const timer = setTimeout(async () => {
+              fileSyncTimers.delete(fileUuid);
+              const latestState = store.getState().document;
+              if (latestState.connectionStatus !== 'connected') return;
+              const latestFile = latestState.files[targetPath];
+              if (!latestFile || latestFile.isBinary) return;
+
+              try {
+                const delta = encodeCellsToYjsDelta(latestFile.cells || []);
+                if (delta) {
+                  await api.sendTypstFileChanges(fileUuid, delta);
+                }
+              } catch (err) {
+                console.error('Failed to sync debounced file changes to server:', err);
+              }
+            }, SYNC_DEBOUNCE_MS);
+
+            fileSyncTimers.set(fileUuid, timer);
           }
         }
       }
@@ -110,21 +114,21 @@ export const dbMiddleware: Middleware = store => next => action => {
       
       const fileToSave = state.files[newPath];
       if (fileToSave) {
+        const fileUuid = fileToSave.fileUuid || crypto.randomUUID();
         saveFileToDB({
           id: `${currentProjectId}:${newPath}`,
           projectId: currentProjectId,
           path: newPath,
           isBinary: fileToSave.isBinary || false,
           binaryData: (fileToSave as any).binaryData,
-          cells: (fileToSave as any).cells
+          cells: (fileToSave as any).cells,
+          fileUuid
         }).catch(err => console.error('Failed to save renamed file to DB:', err));
 
-        // Online sync: delete old file and create new one with client UUID
+        // Online sync: delete old file on server and create new one with fileUuid
         if (state.connectionStatus === 'connected') {
-          const fileUuid = fileToSave.fileUuid || crypto.randomUUID();
-
-          if (renamedFileBackendId) {
-            api.deleteFile(currentProjectId, renamedFileBackendId)
+          if (renamedFileUuid) {
+            api.deleteFile(currentProjectId, renamedFileUuid)
               .catch(err => console.error('Failed to delete old file on server during rename:', err));
           }
 
@@ -136,12 +140,6 @@ export const dbMiddleware: Middleware = store => next => action => {
               type: 'binary',
               content: base64Content
             })
-              .then(res => {
-                store.dispatch({
-                  type: 'document/setFileBackendId',
-                  payload: { path: newPath, backendId: res?.id || fileUuid }
-                });
-              })
               .catch(err => console.error('Failed to recreate renamed binary file on server:', err));
           } else {
             api.createFileWithId(currentProjectId, {
@@ -149,14 +147,9 @@ export const dbMiddleware: Middleware = store => next => action => {
               name: newPath,
               type: 'typst'
             })
-              .then(async (res) => {
-                const createdId = res?.id || fileUuid;
-                store.dispatch({
-                  type: 'document/setFileBackendId',
-                  payload: { path: newPath, backendId: createdId }
-                });
+              .then(async () => {
                 const delta = encodeCellsToYjsDelta(fileToSave.cells || []);
-                await api.sendTypstFileChanges(createdId, delta);
+                await api.sendTypstFileChanges(fileUuid, delta);
               })
               .catch(err => console.error('Failed to recreate renamed typst file on server:', err));
           }
@@ -170,8 +163,8 @@ export const dbMiddleware: Middleware = store => next => action => {
     if (currentProjectId) {
       deleteFileFromDB(currentProjectId, deletedPath).catch(err => console.error('Failed to delete file from DB:', err));
 
-      if (state.connectionStatus === 'connected' && deletedFileBackendId) {
-        api.deleteFile(currentProjectId, deletedFileBackendId)
+      if (state.connectionStatus === 'connected' && deletedFileUuid) {
+        api.deleteFile(currentProjectId, deletedFileUuid)
           .catch(err => console.error('Failed to delete file on server:', err));
       }
     }
@@ -194,7 +187,6 @@ export const dbMiddleware: Middleware = store => next => action => {
     const projectId = (action as any).payload;
     if (projectId) {
       deleteProjectFromDB(projectId).catch(err => console.error('Failed to delete project from DB:', err));
-      // Note: No DELETE /projects/{projectID} endpoint exists in the OpenAPI spec.
     }
   }
 

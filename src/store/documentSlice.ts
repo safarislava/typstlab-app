@@ -15,7 +15,6 @@ export interface TextTypstFile {
   path: string;
   isBinary?: false;
   cells: Cell[];
-  backendId?: string;
   fileUuid?: string;
 }
 
@@ -23,7 +22,6 @@ export interface BinaryTypstFile {
   path: string;
   isBinary: true;
   binaryData: Uint8Array;
-  backendId?: string;
   fileUuid?: string;
 }
 
@@ -358,20 +356,6 @@ const documentSlice = createSlice({
       };
       state.activeFilePath = path;
       state.activeCellId = cells.length > 0 ? cells[0].id : null;
-    },
-    setFileBackendId: (state, action: PayloadAction<{ path: string; backendId: string }>) => {
-      const { path, backendId } = action.payload;
-      if (state.files[path]) {
-        state.files[path].backendId = backendId;
-      }
-    },
-    setFileBackendIds: (state, action: PayloadAction<Record<string, string>>) => {
-      const mappings = action.payload;
-      Object.entries(mappings).forEach(([path, backendId]) => {
-        if (state.files[path]) {
-          state.files[path].backendId = backendId;
-        }
-      });
     }
   }
 });
@@ -403,9 +387,7 @@ export const {
   updateProjectName,
   setScreen,
   loginUser,
-  logoutUser,
-  setFileBackendId,
-  setFileBackendIds
+  logoutUser
 } = documentSlice.actions;
 
 export default documentSlice.reducer;

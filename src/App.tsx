@@ -283,22 +283,16 @@ function App() {
     ? `calc((100% - ${actualSidebarWidth}px) * ${editorPercent} / 100 - 3px)`
     : '100%';
 
-  if (connectionStatus === 'offline') {
-    if (screen === 'login' || screen === 'register' || screen === 'dashboard') {
-      return <Dashboard />;
-    }
-  } else {
-    if (screen === 'login') {
-      return <Login />;
-    }
+  if (screen === 'login') {
+    return <Login />;
+  }
 
-    if (screen === 'register') {
-      return <Register />;
-    }
+  if (screen === 'register') {
+    return <Register />;
+  }
 
-    if (screen === 'dashboard') {
-      return <Dashboard />;
-    }
+  if (screen === 'dashboard') {
+    return <Dashboard />;
   }
 
   return (

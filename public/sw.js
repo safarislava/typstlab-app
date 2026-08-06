@@ -1,4 +1,4 @@
-const CACHE_NAME = 'typstlab-cache-v2';
+const CACHE_NAME = 'typstlab-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -36,6 +36,11 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Ignore non-HTTP/HTTPS schemes (e.g. chrome-extension://, moz-extension://, data:)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
 
   // Bypass backend API endpoints from Service Worker caching
   if (

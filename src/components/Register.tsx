@@ -3,15 +3,15 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser, setScreen } from '../store/documentSlice';
 import { getUserFromDB, saveUserToDB, hashPassword, migrateLegacyProjectsToUser } from '../store/db';
 import { api } from '../utils/api';
-import { Lock, User, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus, CheckCircle } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus } from 'lucide-react';
+
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const Register: React.FC = () => {
   const dispatch = useAppDispatch();
   const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
   
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
@@ -24,14 +24,16 @@ export const Register: React.FC = () => {
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    const cleanEmail = email.trim().toLowerCase();
+
     // Validations
-    if (!username.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!cleanEmail || !password.trim() || !confirmPassword.trim()) {
       setError('Пожалуйста, заполните все обязательные поля');
       return;
     }
 
-    if (username.trim().length < 3) {
-      setError('Имя пользователя должно содержать не менее 3 символов');
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Пожалуйста, введите корректный адрес электронной почты (например, user@example.com)');
       return;
     }
 
@@ -49,23 +51,19 @@ export const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      if (connectionStatus === 'connected') {
-        let registerEmail = email.trim();
-        if (!registerEmail) {
-          registerEmail = `${username.trim().toLowerCase()}@typstlab.local`;
-        }
+      const usernameFromEmail = cleanEmail.split('@')[0] || 'user';
 
+      if (connectionStatus === 'connected') {
         // 1. Register with Go backend
-        await api.register(registerEmail, password.trim(), 'user');
+        await api.register(cleanEmail, password.trim(), 'user');
         
         // 2. Log in with Go backend
-        await api.login(registerEmail, password.trim());
+        await api.login(cleanEmail, password.trim());
 
-        const usernameParsed = username.trim().toLowerCase();
         const user = {
-          username: usernameParsed,
-          email: registerEmail,
-          fullName: fullName.trim() || usernameParsed
+          username: usernameFromEmail,
+          email: cleanEmail,
+          fullName: usernameFromEmail
         };
 
         // Migrate legacy projects to the new user automatically
@@ -74,11 +72,10 @@ export const Register: React.FC = () => {
         // Login user
         dispatch(loginUser(user));
       } else {
-        const cleanUsername = username.trim().toLowerCase();
-        // Check if user exists
-        const existingUser = await getUserFromDB(cleanUsername);
+        // Check if user exists locally
+        const existingUser = await getUserFromDB(usernameFromEmail);
         if (existingUser) {
-          setError('Имя пользователя уже занято');
+          setError('Пользователь с таким email уже зарегистрирован локально');
           setIsLoading(false);
           return;
         }
@@ -86,10 +83,10 @@ export const Register: React.FC = () => {
         // Hash password and save to DB
         const passwordHash = await hashPassword(password.trim());
         const newUser = {
-          username: cleanUsername,
+          username: usernameFromEmail,
           passwordHash,
-          email: email.trim() || undefined,
-          fullName: fullName.trim() || undefined,
+          email: cleanEmail,
+          fullName: usernameFromEmail,
           createdAt: Date.now(),
         };
 
@@ -149,40 +146,7 @@ export const Register: React.FC = () => {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="username">Имя пользователя *</label>
-              <div className="input-wrapper">
-                <User size={16} className="input-icon" />
-                <input
-                  id="username"
-                  type="text"
-                  placeholder="Минимум 3 символа"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="username"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="fullName">ФИО / Полное имя</label>
-              <div className="input-wrapper">
-                <CheckCircle size={16} className="input-icon" />
-                <input
-                  id="fullName"
-                  type="text"
-                  placeholder="Иван Иванов"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="name"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">Email *</label>
               <div className="input-wrapper">
                 <Mail size={16} className="input-icon" />
                 <input
@@ -193,6 +157,7 @@ export const Register: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                   autoComplete="email"
+                  required
                 />
               </div>
             </div>
@@ -266,7 +231,13 @@ export const Register: React.FC = () => {
 
           <div className="auth-footer">
             <span>Уже есть аккаунт?</span>
-            <button className="auth-link-btn" onClick={() => dispatch(setScreen('login'))}>
+            <button
+              className="auth-link-btn"
+              onClick={() => {
+                window.location.hash = '#/login';
+                dispatch(setScreen('login'));
+              }}
+            >
               Войти
             </button>
           </div>

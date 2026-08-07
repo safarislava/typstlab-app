@@ -12,44 +12,43 @@
   .ribbon-panel {
     display: flex;
     align-items: center;
-    padding: 4px 16px;
-    height: 44px; /* Super compact height */
-    gap: 16px;
+    padding: 4px 12px;
+    min-height: 40px;
+    height: auto;
     overflow: visible;
     background: transparent;
     position: relative;
 
-    &::-webkit-scrollbar {
-      height: 4px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-    }
-
     .ribbon-groups {
       display: flex;
       align-items: center;
-      gap: 16px;
-      height: 100%;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      width: 100%;
     }
 
     .ribbon-group {
       display: flex;
       align-items: center;
       position: relative;
+      flex-shrink: 0;
+      white-space: nowrap;
+      margin-right: 12px;
+      padding-right: 12px;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+
+      &:last-child {
+        border-right: none;
+        margin-right: 0;
+        padding-right: 0;
+      }
 
       .group-content {
         display: flex;
         align-items: center;
         gap: 4px;
+        flex-shrink: 0;
       }
-    }
-
-    .ribbon-group-separator {
-      width: 1px;
-      height: 24px;
-      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .ribbon-btn {

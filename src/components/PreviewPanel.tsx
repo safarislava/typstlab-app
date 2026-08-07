@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setIsCompiling, setCompilerError } from '../store/documentSlice';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Hand, Maximize2 } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
 import { syncFilesToVfs } from '../utils/vfsSync';
@@ -20,7 +20,7 @@ function splitPages(svgHtml: string): PageData[] {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgHtml, 'image/svg+xml');
     
-    const parserError = doc.querySelector('parsererror');
+    const parserError = doc.getElementsByTagName('parsererror')[0];
     if (parserError) {
       console.warn('XML Parser Error while parsing SVG, falling back to HTML parser:', parserError.textContent);
       const htmlDoc = parser.parseFromString(svgHtml, 'text/html');
@@ -46,15 +46,11 @@ function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
   const defsEl = rootSvg.querySelector('defs');
 
   // Find all page groups — DIRECT children of root SVG only.
-  // querySelectorAll would also find nested g.typst-page inside page content,
-  // which causes phantom duplicate pages. Using rootSvg.children limits depth to 1.
   const pages = Array.from(rootSvg.children).filter((el) => {
     if (el.tagName.toLowerCase() !== 'g') return false;
     const cls = el.getAttribute('class') || '';
     return cls.split(/\s+/).includes('typst-page');
   }) as SVGGElement[];
-
-  console.log(`[TypstLab Preview] Pages detected: ${pages.length}`);
 
   if (pages.length === 0) {
     const viewBox = rootSvg.getAttribute('viewBox');
@@ -70,22 +66,12 @@ function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
     return [{ svgHtml: originalHtml, width, height }];
   }
 
-  // Parse the root SVG viewBox to understand the coordinate system
-  const rootViewBox = rootSvg.getAttribute('viewBox');
-  console.log(`[TypstLab Preview] Root SVG viewBox: ${rootViewBox}`);
-
   const pageSvgs: PageData[] = [];
 
-  pages.forEach((pageGroup, idx) => {
+  pages.forEach((pageGroup) => {
     const width = parseFloat(pageGroup.getAttribute('data-page-width') || '595');
     const height = parseFloat(pageGroup.getAttribute('data-page-height') || '842');
 
-    // Extract the Y translation from the group's existing transform attribute.
-    // Typst positions each page at translate(0, cumulativeY) in the root coordinate space.
-    // The content *inside* the group uses coordinates relative to the group, so after
-    // the group's translation, absolute SVG Y coords = pageLocalY + translateY.
-    // To render just this page, we need viewBox origin at (0, translateY) so that
-    // the page-local content [0..height] maps to the viewport.
     const transform = pageGroup.getAttribute('transform') || '';
     let translateY = 0;
     let translateX = 0;
@@ -95,15 +81,9 @@ function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
       translateY = parseFloat(translateMatch[2]);
     }
 
-    console.log(`[TypstLab Preview] Page ${idx + 1}: w=${width} h=${height} tx=${translateX} ty=${translateY} transform="${transform}"`);
-
-    // Clone the group but keep its original transform intact.
-    // The viewBox will be shifted to the page's position in the document space.
     const clonedGroup = pageGroup.cloneNode(true) as SVGElement;
 
     const newSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    // viewBox starts at (translateX, translateY) and spans (width, height)
-    // This "windows" into exactly this page's region of the shared coordinate space.
     newSvg.setAttribute('viewBox', `${translateX} ${translateY} ${width} ${height}`);
     newSvg.setAttribute('width', '100%');
     newSvg.setAttribute('height', '100%');
@@ -137,6 +117,91 @@ export const PreviewPanel: React.FC = () => {
   );
   
   const [renderedPages, setRenderedPages] = useState<PageData[]>([]);
+  const [zoom, setZoom] = useState<number>(1.0);
+  const [isPanToolActive, setIsPanToolActive] = useState<boolean>(false);
+  const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
+  const [isDraggingPan, setIsDraggingPan] = useState<boolean>(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number }>({
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0
+  });
+
+  // Track global Space key for quick hold-to-pan navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (e.target as HTMLElement)?.tagName;
+      const isEditingText = ['INPUT', 'TEXTAREA'].includes(activeTag) || (e.target as HTMLElement)?.closest('.cm-editor');
+      if (e.code === 'Space' && !isEditingText) {
+        setIsSpacePressed(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+        setIsDraggingPan(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  const handleZoomIn = () => setZoom((z) => Math.min(3.0, parseFloat((z + 0.15).toFixed(2))));
+  const handleZoomOut = () => setZoom((z) => Math.max(0.3, parseFloat((z - 0.15).toFixed(2))));
+  const handleResetZoom = () => setZoom(1.0);
+
+  const handleFitWidth = () => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth - 96; // padding space
+    const pageWidth = renderedPages[0]?.width || 595;
+    const calculatedZoom = Math.min(2.5, Math.max(0.4, parseFloat((containerWidth / pageWidth).toFixed(2))));
+    setZoom(calculatedZoom);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      setZoom((z) => Math.min(3.0, Math.max(0.3, parseFloat((z + delta).toFixed(2)))));
+    }
+  };
+
+  const isPanningActive = isPanToolActive || isSpacePressed;
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 1 || (e.button === 0 && isPanningActive)) {
+      if (!containerRef.current) return;
+      e.preventDefault();
+      setIsDraggingPan(true);
+      panStartRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        scrollLeft: containerRef.current.scrollLeft,
+        scrollTop: containerRef.current.scrollTop
+      };
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingPan || !containerRef.current) return;
+    e.preventDefault();
+    const deltaX = e.clientX - panStartRef.current.startX;
+    const deltaY = e.clientY - panStartRef.current.startY;
+    containerRef.current.scrollLeft = panStartRef.current.scrollLeft - deltaX;
+    containerRef.current.scrollTop = panStartRef.current.scrollTop - deltaY;
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingPan(false);
+  };
 
   // Debounced Compilation Loop
   useEffect(() => {
@@ -146,10 +211,8 @@ export const PreviewPanel: React.FC = () => {
       dispatch(setIsCompiling(true));
 
       try {
-        // Sync all files to the compiler virtual file system (VFS)
         await syncFilesToVfs(files);
 
-        // Compile and render directly to SVG in a single WASM call to avoid borrow checker errors
         const result = await globalCompilerQueue.run(async () => {
           return await $typst.svg({ mainFilePath: `/${activeFilePath}` });
         });
@@ -157,7 +220,7 @@ export const PreviewPanel: React.FC = () => {
         if (result !== null) {
           const pages = splitPages(result);
           setRenderedPages(pages);
-          dispatch(setCompilerError(null)); // Clear compiler errors on success
+          dispatch(setCompilerError(null));
         }
       } catch (err: any) {
         console.error('Typst Compilation Error:', err);
@@ -165,60 +228,129 @@ export const PreviewPanel: React.FC = () => {
       } finally {
         dispatch(setIsCompiling(false));
       }
-    }, 500); // 500ms debounce to prevent constant compiling on keystroke
+    }, 500);
 
     return () => clearTimeout(compileTimer);
   }, [files, activeFilePath, compilerReady, dispatch]);
 
+  // Direct physical layout width calculation (prevents transform-origin clipping)
+  const basePageWidth = renderedPages[0]?.width || 595;
+  const scaledWidth = Math.round(basePageWidth * zoom);
+
   return (
     <section className="preview-panel">
-      <div className="preview-container">
-        {!compilerReady && (
-          <div className="preview-loader">
-            <RefreshCw className="spinner" />
-            <span>Loading Typst WebAssembly compiler...</span>
-          </div>
-        )}
+      {/* Top Floating Zoom Controls Bar */}
+      <div className="preview-toolbar">
+        <div className="zoom-controls">
+          <button 
+            className={`zoom-btn ${isPanToolActive ? 'active' : ''}`}
+            onClick={() => setIsPanToolActive(!isPanToolActive)}
+            title="Pan Hand Tool (Hold Space or drag)"
+          >
+            <Hand size={14} />
+          </button>
 
-        {compilerReady && (
-          <div className="preview-output-wrapper">
-            {isCompiling && (
-              <div className="compiling-toast">
-                <RefreshCw className="spinner-small" />
-                <span>Recompiling...</span>
-              </div>
-            )}
+          <div className="toolbar-divider" />
 
-            {compilerError && (
-              <div className="compiler-error-box">
-                <div className="error-header">
-                  <AlertTriangle size={18} />
-                  <h4>Compilation Error</h4>
+          <button className="zoom-btn" onClick={handleZoomOut} title="Zoom Out (-15%)" disabled={zoom <= 0.3}>
+            <ZoomOut size={14} />
+          </button>
+
+          <select 
+            className="zoom-select"
+            value={zoom.toFixed(2)}
+            onChange={(e) => setZoom(parseFloat(e.target.value))}
+            title="Zoom level"
+          >
+            <option value="0.30">30%</option>
+            <option value="0.50">50%</option>
+            <option value="0.75">75%</option>
+            <option value="1.00">100%</option>
+            <option value="1.25">125%</option>
+            <option value="1.50">150%</option>
+            <option value="2.00">200%</option>
+            <option value="2.50">250%</option>
+            <option value="3.00">300%</option>
+          </select>
+
+          <button className="zoom-btn" onClick={handleZoomIn} title="Zoom In (+15%)" disabled={zoom >= 3.0}>
+            <ZoomIn size={14} />
+          </button>
+
+          <button className="zoom-btn" onClick={handleFitWidth} title="Fit Width">
+            <Maximize2 size={14} />
+          </button>
+
+          <button className="zoom-btn reset-btn" onClick={handleResetZoom} title="Reset Zoom (100%)">
+            <RotateCcw size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div 
+        ref={containerRef}
+        className={`preview-container ${isPanningActive ? 'is-pan-active' : ''} ${isDraggingPan ? 'is-dragging-pan' : ''}`}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <div className="preview-canvas-stage">
+          {!compilerReady && (
+            <div className="preview-loader">
+              <RefreshCw className="spinner" />
+              <span>Loading Typst WebAssembly compiler...</span>
+            </div>
+          )}
+
+          {compilerReady && (
+            <div 
+              className="preview-output-wrapper"
+              style={{
+                width: `${scaledWidth}px`,
+                maxWidth: 'none',
+                transition: isDraggingPan ? 'none' : 'width 0.15s ease-out'
+              }}
+            >
+              {isCompiling && (
+                <div className="compiling-toast">
+                  <RefreshCw className="spinner-small" />
+                  <span>Recompiling...</span>
                 </div>
-                <pre className="error-message">{compilerError}</pre>
-              </div>
-            )}
+              )}
 
-            {!compilerError && renderedPages.length === 0 && (
-              <div className="preview-placeholder">
-                Write some Typst markup to compile...
-              </div>
-            )}
+              {compilerError && (
+                <div className="compiler-error-box">
+                  <div className="error-header">
+                    <AlertTriangle size={18} />
+                    <h4>Compilation Error</h4>
+                  </div>
+                  <pre className="error-message">{compilerError}</pre>
+                </div>
+              )}
 
-            {!compilerError && renderedPages.length > 0 && renderedPages.map((page, index) => (
-              <div 
-                key={index}
-                className="svg-render-container"
-                style={{
-                  aspectRatio: `${page.width} / ${page.height}`,
-                  width: '100%',
-                  maxWidth: `${page.width}px`
-                } as React.CSSProperties}
-                dangerouslySetInnerHTML={{ __html: page.svgHtml }} 
-              />
-            ))}
-          </div>
-        )}
+              {!compilerError && renderedPages.length === 0 && (
+                <div className="preview-placeholder">
+                  Write some Typst markup to compile...
+                </div>
+              )}
+
+              {!compilerError && renderedPages.length > 0 && renderedPages.map((page, index) => (
+                <div 
+                  key={index}
+                  className="svg-render-container"
+                  style={{
+                    aspectRatio: `${page.width} / ${page.height}`,
+                    width: '100%',
+                    maxWidth: '100%'
+                  } as React.CSSProperties}
+                  dangerouslySetInnerHTML={{ __html: page.svgHtml }} 
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

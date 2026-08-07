@@ -216,6 +216,7 @@ const documentSlice = createSlice({
       state.currentUser = action.payload;
       state.screen = 'dashboard';
       localStorage.setItem('typstlab_user', JSON.stringify(action.payload));
+      window.location.hash = '#/';
     },
     logoutUser: (state) => {
       state.currentUser = null;
@@ -226,6 +227,7 @@ const documentSlice = createSlice({
       state.activeCellId = null;
       localStorage.removeItem('typstlab_user');
       api.setToken(null);
+      window.location.hash = '#/login';
     },
     
     // Multi-file actions

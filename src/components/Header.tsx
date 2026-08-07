@@ -1,11 +1,10 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setTitle, setPreviewMode, updateProjectName, logoutUser } from '../store/documentSlice';
-import { Download, FileText, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft, LogOut } from 'lucide-react';
+import { Download, Columns, Eye, Edit3, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft, LogOut } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
 import { syncFilesToVfs } from '../utils/vfsSync';
-import { downloadTypstFile } from '../utils/fileDownloader';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -49,13 +48,6 @@ export const Header: React.FC = () => {
     }
   };
 
-  const handleExportSource = () => {
-    const activeFile = files[activeFilePath];
-    if (activeFile) {
-      downloadTypstFile(activeFile);
-    }
-  };
-
   return (
     <header className="app-header">
       <div className="header-left">
@@ -68,15 +60,6 @@ export const Header: React.FC = () => {
           <span>Projects</span>
         </button>
 
-        <div className="breadcrumb-separator">/</div>
-
-        <div className="brand-container">
-          <div className="brand-logo-text">
-            <span className="logo-typst">typst</span>
-            <span className="logo-lab">lab</span>
-          </div>
-        </div>
-        
         <div className="breadcrumb-separator">/</div>
         
         <div className="project-title-container">
@@ -92,22 +75,17 @@ export const Header: React.FC = () => {
 
       <div className="header-center">
         {isCompiling ? (
-          <div className="status-badge compiling">
+          <div className="status-badge compiling" title="Compiling document...">
             <Loader className="status-icon spinner-small" size={14} />
             <span>Compiling...</span>
           </div>
         ) : compilerError ? (
-          <div className="status-badge error">
+          <div className="status-badge error" title={typeof compilerError === 'string' ? compilerError : "Compilation Error"}>
             <AlertCircle className="status-icon" size={14} />
             <span>Error</span>
           </div>
-        ) : compilerReady ? (
-          <div className="status-badge ready">
-            <CheckCircle className="status-icon" size={14} />
-            <span>Ready</span>
-          </div>
-        ) : (
-          <div className="status-badge loading">
+        ) : compilerReady ? null : (
+          <div className="status-badge loading" title="Loading Typst Compiler...">
             <Loader className="status-icon spinner-small" size={14} />
             <span>Loading Compiler...</span>
           </div>
@@ -115,11 +93,11 @@ export const Header: React.FC = () => {
 
         <div className="connection-badge">
           {connectionStatus === 'connected' ? (
-            <div className="status-indicator online" title="Connected">
+            <div className="status-indicator online" title="Cloud Sync: Online">
               <Wifi size={14} />
             </div>
           ) : (
-            <div className="status-indicator offline" title="Offline Mode">
+            <div className="status-indicator offline" title="Cloud Sync: Offline Mode">
               <WifiOff size={14} />
             </div>
           )}
@@ -137,7 +115,7 @@ export const Header: React.FC = () => {
             <span>Edit</span>
           </button>
           <button
-            className={`layout-toggle-btn ${previewMode === 'side-by-side' ? 'active' : ''}`}
+            className={`layout-toggle-btn btn-split ${previewMode === 'side-by-side' ? 'active' : ''}`}
             onClick={() => dispatch(setPreviewMode('side-by-side'))}
             title="Side-by-Side"
           >
@@ -158,20 +136,10 @@ export const Header: React.FC = () => {
           className="export-pdf-btn"
           onClick={handleExportPDF}
           disabled={!compilerReady || isCompiling}
+          title="Export PDF"
         >
           <Download size={15} />
           <span>Export PDF</span>
-        </button>
-
-        <button
-          className="export-pdf-btn"
-          onClick={handleExportSource}
-          disabled={!activeFilePath}
-          title="Export active file as XML blocks"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-        >
-          <FileText size={15} />
-          <span>Export Source</span>
         </button>
 
         {connectionStatus === 'connected' && currentUser && (

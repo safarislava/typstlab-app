@@ -5,6 +5,8 @@ import { getUserFromDB, hashPassword, migrateLegacyProjectsToUser } from '../sto
 import { api } from '../utils/api';
 import { Lock, User, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
@@ -16,8 +18,14 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
+    const cleanInput = username.trim().toLowerCase();
+    if (!cleanInput || !password.trim()) {
       setError('Пожалуйста, заполните все поля');
+      return;
+    }
+
+    if (connectionStatus === 'connected' && !EMAIL_REGEX.test(cleanInput)) {
+      setError('Пожалуйста, введите корректный Email (например, user@example.com)');
       return;
     }
 
@@ -186,7 +194,13 @@ export const Login: React.FC = () => {
 
           <div className="auth-footer">
             <span>Нет аккаунта?</span>
-            <button className="auth-link-btn" onClick={() => dispatch(setScreen('register'))}>
+            <button
+              className="auth-link-btn"
+              onClick={() => {
+                window.location.hash = '#/register';
+                dispatch(setScreen('register'));
+              }}
+            >
               Зарегистрироваться
             </button>
           </div>

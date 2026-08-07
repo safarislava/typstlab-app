@@ -130,7 +130,6 @@ export const WordRibbon: React.FC = () => {
         setIsShiftPressed(false);
       }
     };
-    // Reset shift if window loses focus
     const handleBlur = () => {
       setIsShiftPressed(false);
     };
@@ -198,34 +197,34 @@ export const WordRibbon: React.FC = () => {
         cursorOffset = selectedText ? replacement.length : 8;
         break;
 
-      // Code Group
+      // Code Group (No default typst tag)
       case 'code-block':
-        replacement = `\`\`\`typst\n${selectedText || ''}\n\`\`\``;
-        cursorOffset = selectedText ? replacement.length : 9; // on the empty line inside the code block
+        replacement = `\`\`\`\n${selectedText || ''}\n\`\`\``;
+        cursorOffset = selectedText ? replacement.length : 4;
         break;
 
-      // Insert Group (Table handled separately, all paths/URLs/captions empty by default)
+      // Insert Group
       case 'image':
         replacement = `\n#image("")\n`;
-        cursorOffset = 9; // inside the quotes of #image("")
+        cursorOffset = 9;
         break;
       case 'figure':
         replacement = `\n#figure(\n  ${selectedText || '[]'},\n  caption: [],\n)\n`;
-        cursorOffset = selectedText ? replacement.length : 13; // inside the body brackets `[]` of the figure
+        cursorOffset = selectedText ? replacement.length : 13;
         break;
       case 'link':
         replacement = `#link("")[${selectedText || ''}]`;
-        cursorOffset = 7; // inside the quotes of #link("")
+        cursorOffset = 7;
         break;
       case 'pagebreak':
         replacement = `\n#pagebreak()\n`;
         cursorOffset = replacement.length;
         break;
 
-      // Math Group (Inner text is empty by default)
+      // Math Group
       case 'math-block':
         replacement = `\n$ ${selectedText || ''} $\n`;
-        cursorOffset = selectedText ? replacement.length : 3; // inside the math block
+        cursorOffset = selectedText ? replacement.length : 3;
         break;
 
       // Operators
@@ -257,6 +256,10 @@ export const WordRibbon: React.FC = () => {
         replacement = 'lim_()';
         cursorOffset = 5;
         break;
+      case 'op-diff':
+        replacement = 'diff';
+        cursorOffset = replacement.length;
+        break;
       case 'op-sqrt':
         replacement = 'sqrt()';
         cursorOffset = 5;
@@ -265,32 +268,20 @@ export const WordRibbon: React.FC = () => {
         replacement = 'nabla';
         cursorOffset = replacement.length;
         break;
-      case 'op-diff':
-        replacement = 'diff';
-        cursorOffset = replacement.length;
-        break;
-      case 'op-union':
-        replacement = 'union';
-        cursorOffset = replacement.length;
-        break;
-      case 'op-sect':
-        replacement = 'sect';
-        cursorOffset = replacement.length;
-        break;
       case 'op-pm':
         replacement = 'plus.minus';
         cursorOffset = replacement.length;
         break;
       case 'op-inf':
-        replacement = 'infinity';
+        replacement = 'oo';
         cursorOffset = replacement.length;
         break;
       case 'op-to':
-        replacement = 'to';
+        replacement = '->';
         cursorOffset = replacement.length;
         break;
       case 'op-lrarrow':
-        replacement = 'arrow.l.r';
+        replacement = '<->';
         cursorOffset = replacement.length;
         break;
       case 'op-approx':
@@ -314,7 +305,15 @@ export const WordRibbon: React.FC = () => {
         cursorOffset = replacement.length;
         break;
       case 'op-notin':
-        replacement = 'in.not';
+        replacement = 'not in';
+        cursorOffset = replacement.length;
+        break;
+      case 'op-union':
+        replacement = 'union';
+        cursorOffset = replacement.length;
+        break;
+      case 'op-sect':
+        replacement = 'sect';
         cursorOffset = replacement.length;
         break;
       case 'op-forall':
@@ -326,7 +325,7 @@ export const WordRibbon: React.FC = () => {
         cursorOffset = replacement.length;
         break;
 
-      // Greek Symbols (Typst math format, capitalized if shift is held)
+      // Symbols
       case 'symbol-alpha':
         replacement = useShift ? 'Alpha' : 'alpha';
         cursorOffset = replacement.length;
@@ -457,20 +456,7 @@ export const WordRibbon: React.FC = () => {
             </div>
           </div>
 
-          <div className="ribbon-group-separator" />
-
-          {/* Group 2: Code */}
-          <div className="ribbon-group">
-            <div className="group-content">
-              <button className="ribbon-btn" onClick={() => executeCommand('code-block')} title="Code Block (```typst...)">
-                <Binary size={15} />
-              </button>
-            </div>
-          </div>
-
-          <div className="ribbon-group-separator" />
-
-          {/* Group 3: Insert with Table dropdown */}
+          {/* Group 2: Insert */}
           <div className="ribbon-group table-dropdown-container">
             <div className="group-content">
               {/* Word-like Table Dropdown Trigger */}
@@ -542,20 +528,13 @@ export const WordRibbon: React.FC = () => {
             </div>
           </div>
 
-          <div className="ribbon-group-separator" />
-
-          {/* Group 4: Math Block */}
-          <div className="ribbon-group">
+          {/* Group 3: Math & Code (Combined) */}
+          <div className="ribbon-group symbols-dropdown-container">
             <div className="group-content">
               <button className="ribbon-btn" onClick={() => executeCommand('math-block')} title="Math Formula ($ x $) ">
                 <Calculator size={15} />
               </button>
-            </div>
-          </div>
 
-          {/* Group 5: Greek Letters Dropdown */}
-          <div className="ribbon-group symbols-dropdown-container">
-            <div className="group-content">
               <button 
                 className={`ribbon-btn dropdown-trigger ${showSymbols ? 'active' : ''}`} 
                 onClick={() => {
@@ -595,12 +574,7 @@ export const WordRibbon: React.FC = () => {
                   </div>
                 </>
               )}
-            </div>
-          </div>
 
-          {/* Group 6: Operators Dropdown */}
-          <div className="ribbon-group symbols-dropdown-container">
-            <div className="group-content">
               <button 
                 className={`ribbon-btn dropdown-trigger ${showOperators ? 'active' : ''}`} 
                 onClick={() => {
@@ -634,8 +608,13 @@ export const WordRibbon: React.FC = () => {
                   </div>
                 </>
               )}
+
+              <button className="ribbon-btn" onClick={() => executeCommand('code-block')} title="Code Block (```...)">
+                <Binary size={15} />
+              </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>

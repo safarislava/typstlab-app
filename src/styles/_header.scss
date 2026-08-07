@@ -8,52 +8,55 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
   z-index: 100;
   user-select: none;
+  gap: 8px;
 
   .header-left, .header-center, .header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .brand-container {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .typst-logo-svg {
-    width: 24px;
-    height: 24px;
+  .header-left {
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
   }
 
-  .brand-logo-text {
-    font-size: 16px;
-    letter-spacing: -0.2px;
-    font-family: 'Georgia', 'Buenard', serif;
+  .header-center {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 
-    .logo-typst {
-      font-weight: 700;
-      color: var(--accent-color);
+    @media (max-width: 820px) {
+      .status-badge span {
+        display: none;
+      }
+      .status-badge {
+        padding: 4px 6px;
+      }
     }
+  }
 
-    .logo-lab {
-      font-weight: 500;
-      color: var(--text-main);
-    }
+  .header-right {
+    flex-shrink: 0;
   }
 
   .breadcrumb-separator {
     color: #404249;
     font-size: 16px;
     font-weight: 300;
+    flex-shrink: 0;
   }
 
   .project-title-container {
     display: flex;
     align-items: center;
+    min-width: 0;
+    flex-shrink: 1;
   }
 
   .header-title-input {
@@ -67,8 +70,10 @@
     padding: 4px 8px;
     border-radius: 4px;
     transition: background-color var(--transition-fast);
-    max-width: 200px;
+    max-width: clamp(70px, 14vw, 220px);
     text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 
     &:hover {
       background-color: rgba(255, 255, 255, 0.05);
@@ -89,6 +94,8 @@
     border-radius: 12px;
     font-size: 11px;
     font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
 
     .status-icon {
       flex-shrink: 0;
@@ -119,6 +126,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 
     .status-indicator {
       width: 24px;
@@ -153,6 +161,7 @@
     border: 1px solid var(--border-color);
     padding: 2px;
     border-radius: 6px;
+    flex-shrink: 0;
 
     .layout-toggle-btn {
       background: transparent;
@@ -191,7 +200,7 @@
     background-color: var(--accent-color);
     color: white;
     border: none;
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-family: var(--font-sans), sans-serif;
     font-size: 12px;
@@ -200,7 +209,9 @@
     align-items: center;
     gap: 6px;
     cursor: pointer;
+    white-space: nowrap;
     transition: var(--transition-fast);
+    flex-shrink: 0;
 
     &:hover {
       background-color: $accent-hover;
@@ -210,5 +221,18 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    span {
+      display: none;
+      @media (min-width: 768px) {
+        display: inline;
+      }
+    }
+  }
+}
+
+.narrow-workspace {
+  .btn-split {
+    display: none !important;
   }
 }

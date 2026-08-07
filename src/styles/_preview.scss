@@ -10,14 +10,107 @@
   overflow: hidden;
 }
 
+/* Floating Zoom Toolbar */
+.preview-toolbar {
+  height: 36px;
+  background-color: rgba(23, 24, 26, 0.95);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px;
+  flex-shrink: 0;
+  z-index: 50;
+
+  .zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: rgba(0, 0, 0, 0.25);
+    padding: 2px 4px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+
+    .zoom-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-fast);
+
+      &:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: var(--text-main);
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      &.active {
+        background-color: rgba(0, 219, 222, 0.2);
+        color: #00dbde;
+      }
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 16px;
+      background-color: rgba(255, 255, 255, 0.1);
+      margin: 0 2px;
+    }
+
+    .zoom-select {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 4px;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+
+      option {
+        background-color: #1b1c1e;
+        color: var(--text-main);
+      }
+    }
+  }
+}
+
 .preview-container {
   flex: 1;
   background-color: $bg-darkest;
-  overflow-y: auto;
+  overflow: auto;
   padding: 40px 20px;
+
+  &.is-pan-active {
+    cursor: grab;
+  }
+
+  &.is-dragging-pan {
+    cursor: grabbing !important;
+    user-select: none;
+  }
+}
+
+.preview-canvas-stage {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 100%;
+  min-height: 100%;
+  width: max-content;
+  margin: 0 auto;
 }
 
 .preview-loader {
@@ -60,9 +153,8 @@
 
 /* Preview SVG compiler canvas */
 .preview-output-wrapper {
-  width: 100%;
-  max-width: 700px;
   position: relative;
+  margin: 0 auto;
 }
 
 .svg-render-container {

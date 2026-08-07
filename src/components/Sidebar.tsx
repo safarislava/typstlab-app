@@ -36,10 +36,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           {activeTab === 'files' && <FilesTab onOutlineClick={handleOutlineClick} />}
           {activeTab === 'compiler' && <CompilerTab />}
           {activeTab === 'settings' && <SettingsTab />}
-
-          <div className="sidebar-pane-footer">
-            <span className="version-label">Typst Compiler v0.11.0</span>
-          </div>
         </div>
       )}
     </aside>

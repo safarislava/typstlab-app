@@ -188,10 +188,16 @@ function App() {
                 fileUuid: f.fileUuid
               };
             } else {
+              const seenCellIds = new Set<string>();
+              const cleanCells = (f.cells || []).filter(c => {
+                if (!c.id || seenCellIds.has(c.id)) return false;
+                seenCellIds.add(c.id);
+                return true;
+              });
               return {
                 path: f.path,
                 isBinary: false,
-                cells: f.cells || [],
+                cells: cleanCells,
                 fileUuid: f.fileUuid
               };
             }

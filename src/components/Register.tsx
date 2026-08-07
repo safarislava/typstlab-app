@@ -5,6 +5,8 @@ import { getUserFromDB, saveUserToDB, hashPassword, migrateLegacyProjectsToUser 
 import { api } from '../utils/api';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus } from 'lucide-react';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export const Register: React.FC = () => {
   const dispatch = useAppDispatch();
   const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
@@ -30,8 +32,8 @@ export const Register: React.FC = () => {
       return;
     }
 
-    if (!cleanEmail.includes('@')) {
-      setError('Пожалуйста, введите корректный Email');
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Пожалуйста, введите корректный адрес электронной почты (например, user@example.com)');
       return;
     }
 

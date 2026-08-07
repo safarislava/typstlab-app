@@ -11,7 +11,7 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { $typst } from '@myriaddreamin/typst.ts';
 import type { SidebarTab } from './components/sidebar/SidebarDock';
-import { initDB, saveProjectToDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
+import { initDB, getFilesForProjectFromDB, getProjectsForUserFromDB, migrateLegacyProjectsToUser, getAllProjectsFromDB } from './store/db';
 import type { TypstProject } from './store/db';
 import { api } from './utils/api';
 import { syncProjectWithServer } from './utils/syncManager';
@@ -112,33 +112,10 @@ function App() {
         if (connectionStatus === 'connected' && currentUser) {
           await migrateLegacyProjectsToUser(currentUser.username);
           dbProjects = await getProjectsForUserFromDB(currentUser.username);
-          
-          if (!dbProjects || dbProjects.length === 0) {
-            const defaultProj = {
-              id: crypto.randomUUID(),
-              name: 'My First Project',
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              ownerId: currentUser.username
-            };
-            await saveProjectToDB(defaultProj);
-            dbProjects = [defaultProj];
-          }
         } else {
           dbProjects = await getAllProjectsFromDB();
-          
-          if (!dbProjects || dbProjects.length === 0) {
-            const defaultProj = {
-              id: crypto.randomUUID(),
-              name: 'My First Project',
-              createdAt: Date.now(),
-              updatedAt: Date.now()
-            };
-            await saveProjectToDB(defaultProj);
-            dbProjects = [defaultProj];
-          }
         }
-        dispatch(setProjects(dbProjects));
+        dispatch(setProjects(dbProjects || []));
       } catch (err) {
         console.error('Error loading projects list:', err);
       }

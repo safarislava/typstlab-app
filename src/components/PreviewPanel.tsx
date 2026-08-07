@@ -20,7 +20,7 @@ function splitPages(svgHtml: string): PageData[] {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgHtml, 'image/svg+xml');
     
-    const parserError = doc.querySelector('parsererror');
+    const parserError = doc.getElementsByTagName('parsererror')[0];
     if (parserError) {
       console.warn('XML Parser Error while parsing SVG, falling back to HTML parser:', parserError.textContent);
       const htmlDoc = parser.parseFromString(svgHtml, 'text/html');

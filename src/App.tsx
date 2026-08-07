@@ -51,7 +51,7 @@ function App() {
         dispatch(setCompilerError(err?.message || 'Failed to load WebAssembly modules'));
       }
     };
-    initWasm();
+    void initWasm();
   }, [dispatch]);
 
   // Register global network error listener to transition to offline state when API calls fail
@@ -82,14 +82,14 @@ function App() {
     };
 
     const handleOnline = () => {
-      checkInitialBackend();
+      void checkInitialBackend();
     };
 
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
 
     // Initial check on mount only
-    checkInitialBackend();
+    void checkInitialBackend();
 
     return () => {
       window.removeEventListener('offline', handleOffline);
@@ -144,7 +144,7 @@ function App() {
       }
     };
 
-    loadProjectsList();
+    void loadProjectsList();
   }, [dispatch, currentUser, connectionStatus]);
 
   // Handle hash-based routing (project selection/loading)
@@ -225,7 +225,7 @@ function App() {
     window.addEventListener('hashchange', handleHashChange);
     
     // Run on initial load/mount/status changes
-    handleHashChange();
+    void handleHashChange();
 
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
@@ -249,7 +249,9 @@ function App() {
   // Initial mount & layout change responsiveness check (e.g. initial load with opened sidebar)
   useLayoutEffect(() => {
     if (screen === 'editor') {
-      const timer = setTimeout(checkWorkspaceResponsiveness, 0);
+      const timer = setTimeout(() => {
+        checkWorkspaceResponsiveness();
+      }, 0);
       return () => clearTimeout(timer);
     }
   }, [screen, activeTab, sidebarWidth, checkWorkspaceResponsiveness]);

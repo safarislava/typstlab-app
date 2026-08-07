@@ -1,61 +1,31 @@
 import React from 'react';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { setConnectionStatus } from '../../store/documentSlice';
-import { Wifi, WifiOff, AlertTriangle } from 'lucide-react';
-
-import { api } from '../../utils/api';
+import { useAppSelector } from '../../store/hooks';
+import { AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 
 export const CompilerTab: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { connectionStatus, compilerReady, compilerError } = useAppSelector(
+  const { compilerReady, compilerError } = useAppSelector(
     (state) => state.document
   );
 
-  const toggleConnection = async () => {
-    if (connectionStatus === 'offline') {
-      try {
-        const isHealthy = await api.checkHealth();
-        dispatch(setConnectionStatus(isHealthy ? 'connected' : 'offline'));
-      } catch {
-        dispatch(setConnectionStatus('offline'));
-      }
-    } else {
-      dispatch(setConnectionStatus('offline'));
-    }
-  };
-
   return (
     <div className="pane-content">
-      <div className="pane-header">WASM Engine</div>
-      <div className="compiler-pane-status">
-        <div className="status-row">
-          <span className="status-label">Compiler Status:</span>
-          <span className={`status-value ${compilerReady ? 'success' : 'loading'}`}>
-            {compilerReady ? 'Ready' : 'Loading...'}
-          </span>
+      {compilerError ? (
+        <div className="status-error-pane">
+          <AlertTriangle size={14} className="err-icon" />
+          <span>Compilation Error detected</span>
+          <pre className="error-details">{compilerError}</pre>
         </div>
-        {compilerError && (
-          <div className="status-error-pane">
-            <AlertTriangle size={14} className="err-icon" />
-            <span>Compilation Error detected</span>
-          </div>
-        )}
-        <div className="divider"></div>
-        <div className="status-row clickable" onClick={toggleConnection}>
-          <span className="status-label">Cloud Sync:</span>
-          <span className="status-value-icon">
-            {connectionStatus === 'connected' ? (
-              <span className="connection-text success">
-                <Wifi size={14} className="inline-icon" /> Online
-              </span>
-            ) : (
-              <span className="connection-text offline">
-                <WifiOff size={14} className="inline-icon" /> Offline
-              </span>
-            )}
-          </span>
+      ) : !compilerReady ? (
+        <div className="status-loading-pane" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, color: 'var(--text-muted)', fontSize: 13 }}>
+          <Loader size={14} className="spinner-small" />
+          <span>Loading compiler...</span>
         </div>
-      </div>
+      ) : (
+        <div className="empty-state-message" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, color: 'var(--text-muted)', fontSize: 13 }}>
+          <CheckCircle size={14} style={{ color: 'var(--success-color)' }} />
+          <span>No compilation errors</span>
+        </div>
+      )}
     </div>
   );
 };

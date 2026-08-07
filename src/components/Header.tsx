@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setTitle, setPreviewMode, updateProjectName, logoutUser } from '../store/documentSlice';
-import { Download, Columns, Eye, Edit3, CheckCircle, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft, LogOut } from 'lucide-react';
+import { Download, Columns, Eye, Edit3, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft, LogOut } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
 import { syncFilesToVfs } from '../utils/vfsSync';
@@ -75,22 +75,17 @@ export const Header: React.FC = () => {
 
       <div className="header-center">
         {isCompiling ? (
-          <div className="status-badge compiling">
+          <div className="status-badge compiling" title="Compiling document...">
             <Loader className="status-icon spinner-small" size={14} />
             <span>Compiling...</span>
           </div>
         ) : compilerError ? (
-          <div className="status-badge error">
+          <div className="status-badge error" title={typeof compilerError === 'string' ? compilerError : "Compilation Error"}>
             <AlertCircle className="status-icon" size={14} />
             <span>Error</span>
           </div>
-        ) : compilerReady ? (
-          <div className="status-badge ready">
-            <CheckCircle className="status-icon" size={14} />
-            <span>Ready</span>
-          </div>
-        ) : (
-          <div className="status-badge loading">
+        ) : compilerReady ? null : (
+          <div className="status-badge loading" title="Loading Typst Compiler...">
             <Loader className="status-icon spinner-small" size={14} />
             <span>Loading Compiler...</span>
           </div>
@@ -98,11 +93,11 @@ export const Header: React.FC = () => {
 
         <div className="connection-badge">
           {connectionStatus === 'connected' ? (
-            <div className="status-indicator online" title="Connected">
+            <div className="status-indicator online" title="Cloud Sync: Online">
               <Wifi size={14} />
             </div>
           ) : (
-            <div className="status-indicator offline" title="Offline Mode">
+            <div className="status-indicator offline" title="Cloud Sync: Offline Mode">
               <WifiOff size={14} />
             </div>
           )}

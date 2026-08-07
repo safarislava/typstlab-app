@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
 import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen, setPreviewMode } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
@@ -235,25 +235,38 @@ function App() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [isWorkspaceNarrow, setIsWorkspaceNarrow] = useState(false);
 
-  // Handle Typst workspace area responsiveness via ResizeObserver
+  const checkWorkspaceResponsiveness = useCallback(() => {
+    if (!workspaceRef.current) return;
+    const width = workspaceRef.current.clientWidth;
+    const narrow = width < 700;
+    setIsWorkspaceNarrow(narrow);
+
+    if (narrow && previewMode === 'side-by-side') {
+      dispatch(setPreviewMode('edit-only'));
+    }
+  }, [dispatch, previewMode]);
+
+  // Initial mount & layout change responsiveness check (e.g. initial load with opened sidebar)
+  useLayoutEffect(() => {
+    if (screen === 'editor') {
+      const timer = setTimeout(checkWorkspaceResponsiveness, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [screen, activeTab, sidebarWidth, checkWorkspaceResponsiveness]);
+
+  // Continuous ResizeObserver for live window & element resizing
   useEffect(() => {
     if (!workspaceRef.current) return;
 
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width;
-        const narrow = width < 640;
-        setIsWorkspaceNarrow(narrow);
-
-        if (narrow && previewMode === 'side-by-side') {
-          dispatch(setPreviewMode('edit-only'));
-        }
-      }
+    const observer = new ResizeObserver(() => {
+      checkWorkspaceResponsiveness();
     });
 
     observer.observe(workspaceRef.current);
+    checkWorkspaceResponsiveness();
+
     return () => observer.disconnect();
-  }, [dispatch, previewMode]);
+  }, [checkWorkspaceResponsiveness]);
 
   // Sidebar drag resizer handler
   const startSidebarResize = (mouseDownEvent: React.MouseEvent) => {
@@ -265,7 +278,6 @@ function App() {
       const deltaX = mouseMoveEvent.clientX - startX;
       const newWidth = startWidth + deltaX;
 
-      // If dragged below 100px, collapse the sidebar tab automatically
       if (newWidth < 100) {
         setActiveTab(null);
       } else {
@@ -290,8 +302,7 @@ function App() {
   // Editor/Preview drag resizer handler
   const startEditorResize = (mouseDownEvent: React.MouseEvent) => {
     mouseDownEvent.preventDefault();
-    const actualSidebarWidth = activeTab === null ? 48 : sidebarWidth;
-    const remainingWidth = window.innerWidth - actualSidebarWidth;
+    const remainingWidth = workspaceRef.current ? workspaceRef.current.clientWidth : (window.innerWidth - actualSidebarWidth);
     const startX = mouseDownEvent.clientX;
     const startPercent = editorPercent;
 
@@ -299,7 +310,7 @@ function App() {
       const deltaX = mouseMoveEvent.clientX - startX;
       const deltaPercent = (deltaX / remainingWidth) * 100;
       const newPercent = startPercent + deltaPercent;
-      setEditorPercent(Math.min(85, Math.max(15, newPercent)));
+      setEditorPercent(Math.min(70, Math.max(30, newPercent)));
     };
 
     const stopResize = () => {
@@ -317,7 +328,7 @@ function App() {
 
   // Calculate widths dynamically depending on previewMode and resizer values
   const editorWidthExpr = previewMode === 'side-by-side'
-    ? `calc((100% - ${actualSidebarWidth}px) * ${editorPercent} / 100 - 3px)`
+    ? `calc(${editorPercent}% - 3px)`
     : '100%';
 
   if (screen === 'login') {
@@ -354,7 +365,7 @@ function App() {
         <div ref={workspaceRef} className="workspace-container" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           
           {previewMode !== 'preview-only' && (
-            <div style={{ width: editorWidthExpr, flexShrink: 0, height: '100%' }}>
+            <div style={{ width: editorWidthExpr, flexShrink: 0, height: '100%', minWidth: 0 }}>
               <EditorWorkspace />
             </div>
           )}
@@ -367,7 +378,7 @@ function App() {
           )}
 
           {previewMode !== 'edit-only' && (
-            <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
+            <div style={{ flex: 1, height: '100%', overflow: 'hidden', minWidth: 0 }}>
               <PreviewPanel />
             </div>
           )}

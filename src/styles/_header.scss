@@ -22,11 +22,16 @@
   .header-left {
     min-width: 0;
     flex-shrink: 1;
+    overflow: hidden;
   }
 
   .header-center {
     flex-shrink: 0;
-    @media (max-width: 580px) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    @media (max-width: 820px) {
       .status-badge span {
         display: none;
       }
@@ -44,12 +49,14 @@
     color: #404249;
     font-size: 16px;
     font-weight: 300;
+    flex-shrink: 0;
   }
 
   .project-title-container {
     display: flex;
     align-items: center;
     min-width: 0;
+    flex-shrink: 1;
   }
 
   .header-title-input {
@@ -63,7 +70,7 @@
     padding: 4px 8px;
     border-radius: 4px;
     transition: background-color var(--transition-fast);
-    max-width: clamp(90px, 20vw, 240px);
+    max-width: clamp(70px, 14vw, 220px);
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
@@ -88,6 +95,7 @@
     font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
+    flex-shrink: 0;
 
     .status-icon {
       flex-shrink: 0;
@@ -118,6 +126,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 
     .status-indicator {
       width: 24px;
@@ -152,6 +161,7 @@
     border: 1px solid var(--border-color);
     padding: 2px;
     border-radius: 6px;
+    flex-shrink: 0;
 
     .layout-toggle-btn {
       background: transparent;
@@ -186,12 +196,6 @@
     }
   }
 
-.narrow-workspace {
-  .btn-split {
-    display: none !important;
-  }
-}
-
   .export-pdf-btn {
     background-color: var(--accent-color);
     color: white;
@@ -207,6 +211,7 @@
     cursor: pointer;
     white-space: nowrap;
     transition: var(--transition-fast);
+    flex-shrink: 0;
 
     &:hover {
       background-color: $accent-hover;
@@ -219,9 +224,15 @@
 
     span {
       display: none;
-      @media (min-width: 520px) {
+      @media (min-width: 768px) {
         display: inline;
       }
     }
+  }
+}
+
+.narrow-workspace {
+  .btn-split {
+    display: none !important;
   }
 }

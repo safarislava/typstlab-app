@@ -4,7 +4,6 @@ import { setActiveCellId } from '../store/documentSlice';
 import { SidebarDock } from './sidebar/SidebarDock';
 import type { SidebarTab } from './sidebar/SidebarDock';
 import { FilesTab } from './sidebar/FilesTab';
-import { CompilerTab } from './sidebar/CompilerTab';
 import { SettingsTab } from './sidebar/SettingsTab';
 
 interface SidebarProps {
@@ -34,7 +33,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       {!isCollapsed && (
         <div className="sidebar-pane">
           {activeTab === 'files' && <FilesTab onOutlineClick={handleOutlineClick} />}
-          {activeTab === 'compiler' && <CompilerTab />}
           {activeTab === 'settings' && <SettingsTab />}
         </div>
       )}

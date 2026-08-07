@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -203,8 +203,22 @@ function App() {
           console.error('Failed to load project files from hash route:', err);
           window.location.hash = '#/';
         }
+      } else if (hash === '#/login') {
+        dispatch(setCurrentProjectId(null));
+        dispatch(setScreen('login'));
+      } else if (hash === '#/register') {
+        dispatch(setCurrentProjectId(null));
+        dispatch(setScreen('register'));
       } else {
         dispatch(setCurrentProjectId(null));
+        if (currentUser) {
+          dispatch(setScreen('dashboard'));
+        } else {
+          dispatch(setScreen('login'));
+          if (window.location.hash !== '#/login') {
+            window.location.hash = '#/login';
+          }
+        }
       }
     };
 

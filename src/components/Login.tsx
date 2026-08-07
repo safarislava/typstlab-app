@@ -186,7 +186,13 @@ export const Login: React.FC = () => {
 
           <div className="auth-footer">
             <span>Нет аккаунта?</span>
-            <button className="auth-link-btn" onClick={() => dispatch(setScreen('register'))}>
+            <button
+              className="auth-link-btn"
+              onClick={() => {
+                window.location.hash = '#/register';
+                dispatch(setScreen('register'));
+              }}
+            >
               Зарегистрироваться
             </button>
           </div>

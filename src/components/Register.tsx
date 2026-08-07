@@ -266,7 +266,13 @@ export const Register: React.FC = () => {
 
           <div className="auth-footer">
             <span>Уже есть аккаунт?</span>
-            <button className="auth-link-btn" onClick={() => dispatch(setScreen('login'))}>
+            <button
+              className="auth-link-btn"
+              onClick={() => {
+                window.location.hash = '#/login';
+                dispatch(setScreen('login'));
+              }}
+            >
               Войти
             </button>
           </div>

@@ -456,9 +456,7 @@ export const WordRibbon: React.FC = () => {
             </div>
           </div>
 
-          <div className="ribbon-group-separator" />
-
-          {/* Group 2: Insert with Table dropdown */}
+          {/* Group 2: Insert */}
           <div className="ribbon-group table-dropdown-container">
             <div className="group-content">
               {/* Word-like Table Dropdown Trigger */}
@@ -530,20 +528,13 @@ export const WordRibbon: React.FC = () => {
             </div>
           </div>
 
-          <div className="ribbon-group-separator" />
-
-          {/* Group 3: Math Block */}
-          <div className="ribbon-group">
+          {/* Group 3: Math & Code (Combined) */}
+          <div className="ribbon-group symbols-dropdown-container">
             <div className="group-content">
               <button className="ribbon-btn" onClick={() => executeCommand('math-block')} title="Math Formula ($ x $) ">
                 <Calculator size={15} />
               </button>
-            </div>
-          </div>
 
-          {/* Group 4: Greek Letters Dropdown */}
-          <div className="ribbon-group symbols-dropdown-container">
-            <div className="group-content">
               <button 
                 className={`ribbon-btn dropdown-trigger ${showSymbols ? 'active' : ''}`} 
                 onClick={() => {
@@ -583,12 +574,7 @@ export const WordRibbon: React.FC = () => {
                   </div>
                 </>
               )}
-            </div>
-          </div>
 
-          {/* Group 5: Operators Dropdown */}
-          <div className="ribbon-group symbols-dropdown-container">
-            <div className="group-content">
               <button 
                 className={`ribbon-btn dropdown-trigger ${showOperators ? 'active' : ''}`} 
                 onClick={() => {
@@ -622,14 +608,7 @@ export const WordRibbon: React.FC = () => {
                   </div>
                 </>
               )}
-            </div>
-          </div>
 
-          <div className="ribbon-group-separator" />
-
-          {/* Group 6: Code Block (Last) */}
-          <div className="ribbon-group">
-            <div className="group-content">
               <button className="ribbon-btn" onClick={() => executeCommand('code-block')} title="Code Block (```...)">
                 <Binary size={15} />
               </button>

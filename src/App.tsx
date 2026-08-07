@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen, setPreviewMode } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -232,6 +232,29 @@ function App() {
     };
   }, [dispatch, connectionStatus, currentUser, screen]);
 
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [isWorkspaceNarrow, setIsWorkspaceNarrow] = useState(false);
+
+  // Handle Typst workspace area responsiveness via ResizeObserver
+  useEffect(() => {
+    if (!workspaceRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        const narrow = width < 640;
+        setIsWorkspaceNarrow(narrow);
+
+        if (narrow && previewMode === 'side-by-side') {
+          dispatch(setPreviewMode('edit-only'));
+        }
+      }
+    });
+
+    observer.observe(workspaceRef.current);
+    return () => observer.disconnect();
+  }, [dispatch, previewMode]);
+
   // Sidebar drag resizer handler
   const startSidebarResize = (mouseDownEvent: React.MouseEvent) => {
     mouseDownEvent.preventDefault();
@@ -310,7 +333,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isWorkspaceNarrow ? 'narrow-workspace' : ''}`}>
       <Header />
       <div className={`app-layout preview-mode-${previewMode}`}>
         
@@ -328,7 +351,7 @@ function App() {
         )}
 
         {/* Central Workspace Container (Editor + Preview split) */}
-        <div className="workspace-container" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div ref={workspaceRef} className="workspace-container" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           
           {previewMode !== 'preview-only' && (
             <div style={{ width: editorWidthExpr, flexShrink: 0, height: '100%' }}>

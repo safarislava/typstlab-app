@@ -186,6 +186,12 @@
     }
   }
 
+.narrow-workspace {
+  .btn-split {
+    display: none !important;
+  }
+}
+
   .export-pdf-btn {
     background-color: var(--accent-color);
     color: white;

@@ -120,7 +120,7 @@ export const Header: React.FC = () => {
             <span>Edit</span>
           </button>
           <button
-            className={`layout-toggle-btn ${previewMode === 'side-by-side' ? 'active' : ''}`}
+            className={`layout-toggle-btn btn-split ${previewMode === 'side-by-side' ? 'active' : ''}`}
             onClick={() => dispatch(setPreviewMode('side-by-side'))}
             title="Side-by-Side"
           >

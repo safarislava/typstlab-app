@@ -236,6 +236,14 @@ const documentSlice = createSlice({
       state.files = {};
       if (loadedFiles.length > 0) {
         loadedFiles.forEach(f => {
+          if (!f.isBinary && f.cells) {
+            const seenCellIds = new Set<string>();
+            f.cells = f.cells.filter(c => {
+              if (!c.id || seenCellIds.has(c.id)) return false;
+              seenCellIds.add(c.id);
+              return true;
+            });
+          }
           state.files[f.path] = f;
         });
       }

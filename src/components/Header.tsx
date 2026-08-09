@@ -1,16 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setTitle, setPreviewMode, updateProjectName, logoutUser } from '../store/documentSlice';
+import { setTitle, setPreviewMode, updateProjectName, logoutUser, setConnectionStatus } from '../store/documentSlice';
 import { Download, Columns, Eye, Edit3, AlertCircle, Loader, Wifi, WifiOff, ArrowLeft, LogOut } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
 import { syncFilesToVfs } from '../utils/vfsSync';
+import { api } from '../utils/api';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
   const { currentProjectId, projects, title, files, activeFilePath, previewMode, isCompiling, connectionStatus, compilerReady, compilerError, currentUser } = useAppSelector(
     (state) => state.document
   );
+
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
+
+  const handleConnectionCheck = async () => {
+    if (isCheckingConnection) return;
+    setIsCheckingConnection(true);
+
+    if (!navigator.onLine) {
+      dispatch(setConnectionStatus('offline'));
+      setIsCheckingConnection(false);
+      return;
+    }
+
+    try {
+      const isHealthy = await api.checkHealth();
+      dispatch(setConnectionStatus(isHealthy ? 'connected' : 'offline'));
+    } catch {
+      dispatch(setConnectionStatus('offline'));
+    } finally {
+      setIsCheckingConnection(false);
+    }
+  };
 
   const activeProject = projects.find(p => p.id === currentProjectId);
   const projectTitle = activeProject ? activeProject.name : title;
@@ -91,13 +114,22 @@ export const Header: React.FC = () => {
           </div>
         )}
 
-        <div className="connection-badge">
-          {connectionStatus === 'connected' ? (
-            <div className="status-indicator online" title="Cloud Sync: Online">
+        <div 
+          className="connection-badge"
+          onClick={() => { void handleConnectionCheck(); }}
+          style={{ cursor: 'pointer' }}
+          title={isCheckingConnection ? "Checking connection status..." : (connectionStatus === 'connected' ? "Connected (Click to check /health)" : "Offline Mode (Click to check /health)")}
+        >
+          {isCheckingConnection ? (
+            <div className="status-indicator loading">
+              <Loader className="spinner-small" size={14} />
+            </div>
+          ) : connectionStatus === 'connected' ? (
+            <div className="status-indicator online">
               <Wifi size={14} />
             </div>
           ) : (
-            <div className="status-indicator offline" title="Cloud Sync: Offline Mode">
+            <div className="status-indicator offline">
               <WifiOff size={14} />
             </div>
           )}

@@ -60,7 +60,6 @@ export function encodeCellsToYjsDelta(arg1: string | Cell[], arg2?: Cell[]): str
       if (item && typeof (item as any).get === 'function') {
         const id = (item as any).get('id');
         if (id && typeof id === 'string') {
-          // Keep the first instance if duplicates exist
           if (!existingMapsById.has(id)) {
             existingMapsById.set(id, item as Y.Map<any>);
           }
@@ -96,14 +95,41 @@ export function encodeCellsToYjsDelta(arg1: string | Cell[], arg2?: Cell[]): str
     });
 
     // 3. Remove any Y.Map elements that are no longer in cells or are duplicates
+    const seenIds = new Set<string>();
     for (let i = yarray.length - 1; i >= 0; i--) {
       const item = yarray.get(i);
       if (item && typeof (item as any).get === 'function') {
         const id = (item as any).get('id');
-        if (!id || !newCellIds.has(id)) {
+        if (!id || !newCellIds.has(id) || seenIds.has(id)) {
           yarray.delete(i, 1);
+        } else {
+          seenIds.add(id);
         }
       }
+    }
+
+    // 4. Ensure Y.Array sequence ordering matches visual cells target order
+    const currentArray = yarray.toArray() as Y.Map<any>[];
+    const targetYMaps: Y.Map<any>[] = [];
+    cells.forEach(cell => {
+      const validCellId = (cell.id && cell.id.includes('-') && !cell.id.startsWith('cell-')) ? cell.id : crypto.randomUUID();
+      const map = existingMapsById.get(validCellId);
+      if (map) targetYMaps.push(map);
+    });
+
+    let needsReorder = currentArray.length !== targetYMaps.length;
+    if (!needsReorder) {
+      for (let i = 0; i < targetYMaps.length; i++) {
+        if (currentArray[i] !== targetYMaps[i]) {
+          needsReorder = true;
+          break;
+        }
+      }
+    }
+
+    if (needsReorder) {
+      yarray.delete(0, yarray.length);
+      yarray.insert(0, targetYMaps);
     }
   });
 
@@ -175,22 +201,38 @@ export function base64ToUint8Array(base64: string): Uint8Array {
 
 /**
  * Encodes the Yjs State Vector of visual cells to base64 string (~10-100 bytes).
+ * Uses persistent file Y.Doc to prevent random clientID mismatch duplication.
  */
-export function encodeYjsStateVector(cells: Cell[]): string {
+export function encodeYjsStateVector(fileIdOrCells: string | Cell[], maybeCells?: Cell[]): string {
   try {
-    const ydoc = new Y.Doc();
-    const yarray = ydoc.getArray('blocks');
+    let fileId: string | undefined;
+    let cells: Cell[] = [];
 
-    const ymaps = cells.map(cell => {
-      const ymap = new Y.Map();
-      const validCellId = (cell.id && cell.id.includes('-') && !cell.id.startsWith('cell-')) ? cell.id : crypto.randomUUID();
-      ymap.set('id', validCellId);
-      ymap.set('name', cell.title || '');
-      ymap.set('content', cell.content || '');
-      return ymap;
-    });
+    if (typeof fileIdOrCells === 'string') {
+      fileId = fileIdOrCells;
+      cells = maybeCells || [];
+    } else {
+      cells = fileIdOrCells || [];
+    }
 
-    yarray.insert(0, ymaps);
+    const ydoc = getOrCreateFileYDoc(fileId);
+    
+    if (cells.length > 0) {
+      const yarray = ydoc.getArray('blocks');
+      if (yarray.length === 0) {
+        ydoc.transact(() => {
+          const ymaps = cells.map(cell => {
+            const ymap = new Y.Map();
+            const validCellId = (cell.id && cell.id.includes('-') && !cell.id.startsWith('cell-')) ? cell.id : crypto.randomUUID();
+            ymap.set('id', validCellId);
+            ymap.set('name', cell.title || '');
+            ymap.set('content', cell.content || '');
+            return ymap;
+          });
+          yarray.insert(0, ymaps);
+        });
+      }
+    }
 
     const sv = Y.encodeStateVector(ydoc);
     return uint8ArrayToBase64(sv);
@@ -202,36 +244,66 @@ export function encodeYjsStateVector(cells: Cell[]): string {
 
 /**
  * Applies a Yjs update delta to existing cells and returns the updated cells array.
+ * Deduplicates yarray blocks in-place by block ID to prevent duplicate blocks.
  */
-export function applyYjsDelta(cells: Cell[], base64Update: string): Cell[] {
+export function applyYjsDelta(fileIdOrCells: string | Cell[], base64UpdateOrCells?: string | Cell[], maybeBase64Update?: string): Cell[] {
+  let fileId: string | undefined;
+  let cells: Cell[] = [];
+  let base64Update: string;
+
+  if (typeof fileIdOrCells === 'string') {
+    fileId = fileIdOrCells;
+    if (Array.isArray(base64UpdateOrCells)) {
+      cells = base64UpdateOrCells;
+      base64Update = maybeBase64Update || '';
+    } else {
+      base64Update = (base64UpdateOrCells as string) || '';
+    }
+  } else {
+    cells = fileIdOrCells || [];
+    base64Update = (base64UpdateOrCells as string) || '';
+  }
+
   try {
-    const ydoc = new Y.Doc();
+    const ydoc = getOrCreateFileYDoc(fileId);
+    if (base64Update) {
+      const binary = base64ToUint8Array(base64Update);
+      Y.applyUpdate(ydoc, binary);
+    }
+
     const yarray = ydoc.getArray('blocks');
-
-    // Populate initial state into doc
-    const ymaps = cells.map(cell => {
-      const ymap = new Y.Map();
-      ymap.set('id', cell.id);
-      ymap.set('name', cell.title || '');
-      ymap.set('content', cell.content || '');
-      return ymap;
+    
+    // Deduplicate yarray in-place by block ID
+    const seenIds = new Set<string>();
+    ydoc.transact(() => {
+      for (let i = yarray.length - 1; i >= 0; i--) {
+        const ymap = yarray.get(i) as Y.Map<any>;
+        if (ymap && typeof ymap.get === 'function') {
+          const id = ymap.get('id');
+          if (!id || seenIds.has(id)) {
+            yarray.delete(i, 1);
+          } else {
+            seenIds.add(id);
+          }
+        }
+      }
     });
-    yarray.insert(0, ymaps);
 
-    // Apply update from server
-    const binary = base64ToUint8Array(base64Update);
-    Y.applyUpdate(ydoc, binary);
-
-    // Re-extract updated cells
+    // Re-extract deduplicated cells
     const updatedCells: Cell[] = [];
+    const extractedIds = new Set<string>();
     for (let i = 0; i < yarray.length; i++) {
       const ymap = yarray.get(i) as Y.Map<any>;
       if (ymap && typeof ymap.get === 'function') {
-        updatedCells.push({
-          id: ymap.get('id') || `cell-${Date.now()}-${i}`,
-          content: ymap.get('content') || '',
-          title: ymap.get('name') || ''
-        });
+        const id = ymap.get('id') || `cell-${Date.now()}-${i}`;
+        if (!extractedIds.has(id)) {
+          extractedIds.add(id);
+          updatedCells.push({
+            id,
+            content: ymap.get('content') || '',
+            title: ymap.get('name') || ''
+          });
+        }
       }
     }
 

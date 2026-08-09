@@ -73,7 +73,7 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
           id: fileUuid,
           name: file.path,
           type: file.isBinary ? 'binary' : 'typst',
-          yjs_state_vector: file.isBinary ? undefined : encodeYjsStateVector(file.cells || [])
+          yjs_state_vector: file.isBinary ? undefined : encodeYjsStateVector(fileUuid, file.cells || [])
         });
       }
 
@@ -90,7 +90,7 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
               await api.createBinaryFile(projectId, localFile.path, base64Content);
             } else {
               const createdFile = await api.createTypstFile(projectId, localFile.path);
-              const delta = encodeCellsToYjsDelta(localFile.cells || []);
+              const delta = encodeCellsToYjsDelta(localFile.fileUuid || createdFile.id, localFile.cells || []);
               await api.sendTypstFileChanges(createdFile.id, delta);
             }
           } catch {
@@ -124,7 +124,7 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
                   name: localFile.path,
                   type: 'typst'
                 });
-                const delta = encodeCellsToYjsDelta(localFile.cells || []);
+                const delta = encodeCellsToYjsDelta(fileId, localFile.cells || []);
                 await api.sendTypstFileChanges(createdFile.id || fileId, delta);
               }
             }
@@ -136,18 +136,20 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
                 projectId,
                 path: fileName,
                 isBinary: false,
-                cells
+                cells,
+                fileUuid: fileId
               });
             }
           } else if (inst.action === 'apply_changes') {
             if (localFile && !localFile.isBinary && inst.payload) {
-              const updatedCells = applyYjsDelta(localFile.cells || [], inst.payload);
+              const updatedCells = applyYjsDelta(fileId, localFile.cells || [], inst.payload);
               await saveFileToDB({
                 id: `${projectId}:${fileName}`,
                 projectId,
                 path: fileName,
                 isBinary: false,
-                cells: updatedCells
+                cells: updatedCells,
+                fileUuid: fileId
               });
             }
           } else if (inst.action === 'rename' && inst.new_name) {

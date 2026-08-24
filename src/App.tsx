@@ -99,22 +99,23 @@ function App() {
 
   // Load projects list for the dashboard
   useEffect(() => {
-    if (connectionStatus === 'connected' && !currentUser) {
-      dispatch(setProjects([]));
-      return;
-    }
-
     const loadProjectsList = async () => {
       try {
         await initDB();
         let dbProjects: TypstProject[];
-        
-        if (connectionStatus === 'connected' && currentUser) {
+
+        if (connectionStatus === 'connected') {
+          if (!currentUser) {
+            dispatch(setProjects([]));
+            return;
+          }
           await migrateLegacyProjectsToUser(currentUser.username);
           dbProjects = await getProjectsForUserFromDB(currentUser.username);
         } else {
+          // Offline mode: show ALL projects without filtering
           dbProjects = await getAllProjectsFromDB();
         }
+
         dispatch(setProjects(dbProjects || []));
       } catch (err) {
         console.error('Error loading projects list:', err);
@@ -147,7 +148,9 @@ function App() {
 
           // Verify project existence in IndexedDB
           const allProjects = await getAllProjectsFromDB();
-          const authorized = allProjects.some(p => p.id === projectId);
+          const authorized = connectionStatus === 'connected'
+            ? allProjects.some(p => p.id === projectId && (!currentUser || p.ownerId === currentUser.username))
+            : allProjects.some(p => p.id === projectId);
 
           if (!authorized) {
             console.warn('Project not found locally or on server');
@@ -194,13 +197,13 @@ function App() {
         dispatch(setScreen('register'));
       } else {
         dispatch(setCurrentProjectId(null));
-        if (currentUser) {
-          dispatch(setScreen('dashboard'));
-        } else {
+        if (connectionStatus === 'connected' && !currentUser) {
           dispatch(setScreen('login'));
           if (window.location.hash !== '#/login') {
             window.location.hash = '#/login';
           }
+        } else {
+          dispatch(setScreen('dashboard'));
         }
       }
     };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser, setScreen } from '../store/documentSlice';
-import { getUserFromDB, saveUserToDB, hashPassword, migrateLegacyProjectsToUser } from '../store/db';
+import { migrateLegacyProjectsToUser } from '../store/db';
 import { api } from '../utils/api';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus } from 'lucide-react';
 
@@ -47,61 +47,34 @@ export const Register: React.FC = () => {
       return;
     }
 
+    if (connectionStatus !== 'connected') {
+      setError('Регистрация недоступна в офлайн-режиме. Пожалуйста, подключитесь к сети.');
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
     try {
       const usernameFromEmail = cleanEmail.split('@')[0] || 'user';
 
-      if (connectionStatus === 'connected') {
-        // 1. Register with Go backend
-        await api.register(cleanEmail, password.trim(), 'user');
-        
-        // 2. Log in with Go backend
-        await api.login(cleanEmail, password.trim());
+      // 1. Register with Go backend
+      await api.register(cleanEmail, password.trim(), 'user');
+      
+      // 2. Log in with Go backend
+      await api.login(cleanEmail, password.trim());
 
-        const user = {
-          username: usernameFromEmail,
-          email: cleanEmail,
-          fullName: usernameFromEmail
-        };
+      const user = {
+        username: usernameFromEmail,
+        email: cleanEmail,
+        fullName: usernameFromEmail
+      };
 
-        // Migrate legacy projects to the new user automatically
-        await migrateLegacyProjectsToUser(user.username);
+      // Migrate legacy projects to the new user automatically
+      await migrateLegacyProjectsToUser(user.username);
 
-        // Login user
-        dispatch(loginUser(user));
-      } else {
-        // Check if user exists locally
-        const existingUser = await getUserFromDB(usernameFromEmail);
-        if (existingUser) {
-          setError('Пользователь с таким email уже зарегистрирован локально');
-          setIsLoading(false);
-          return;
-        }
-
-        // Hash password and save to DB
-        const passwordHash = await hashPassword(password.trim());
-        const newUser = {
-          username: usernameFromEmail,
-          passwordHash,
-          email: cleanEmail,
-          fullName: usernameFromEmail,
-          createdAt: Date.now(),
-        };
-
-        await saveUserToDB(newUser);
-
-        // Migrate legacy projects to the new user automatically
-        await migrateLegacyProjectsToUser(newUser.username);
-
-        // Login user
-        dispatch(loginUser({
-          username: newUser.username,
-          email: newUser.email,
-          fullName: newUser.fullName
-        }));
-      }
+      // Login user
+      dispatch(loginUser(user));
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err?.message || 'Произошла ошибка при регистрации. Попробуйте еще раз.');

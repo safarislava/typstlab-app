@@ -57,7 +57,7 @@ export const Dashboard: React.FC = () => {
       name: newProjectName.trim(),
       createdAt,
       updatedAt,
-      ownerId: connectionStatus === 'connected' ? currentUser?.username : undefined,
+      ownerId: currentUser?.username || undefined,
     };
 
     dispatch(addProject(newProj));

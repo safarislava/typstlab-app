@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser, setScreen } from '../store/documentSlice';
-import { getUserFromDB, hashPassword, migrateLegacyProjectsToUser } from '../store/db';
+import { migrateLegacyProjectsToUser } from '../store/db';
 import { api } from '../utils/api';
 import { Lock, User, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
 
@@ -24,7 +24,12 @@ export const Login: React.FC = () => {
       return;
     }
 
-    if (connectionStatus === 'connected' && !EMAIL_REGEX.test(cleanInput)) {
+    if (connectionStatus !== 'connected') {
+      setError('Вход в аккаунт недоступен в офлайн-режиме. Пожалуйста, подключитесь к сети.');
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(cleanInput)) {
       setError('Пожалуйста, введите корректный Email (например, user@example.com)');
       return;
     }
@@ -33,61 +38,34 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      if (connectionStatus === 'connected') {
-        const cleanEmail = username.trim();
-        // Online login using Go backend API
-        const loginData = await api.login(cleanEmail, password.trim());
-        const token = loginData.token;
-        
-        let decodedPayload: any = {};
-        try {
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-          }).join(''));
-          decodedPayload = JSON.parse(jsonPayload);
-        } catch (e) {
-          console.error('Failed to decode JWT token:', e);
-        }
-
-        const usernameParsed = decodedPayload.email?.split('@')[0] || cleanEmail.split('@')[0] || 'user';
-        const user = {
-          username: usernameParsed,
-          email: decodedPayload.email || cleanEmail,
-          fullName: decodedPayload.fullName || decodedPayload.name || usernameParsed
-        };
-
-        // Migrate any local legacy projects to this user
-        await migrateLegacyProjectsToUser(user.username);
-
-        dispatch(loginUser(user));
-      } else {
-        // Offline login using local IndexedDB
-        const cleanUsername = username.trim().toLowerCase();
-        const dbUser = await getUserFromDB(cleanUsername);
-        if (!dbUser) {
-          setError('Пользователь не найден');
-          setIsLoading(false);
-          return;
-        }
-
-        const passHash = await hashPassword(password.trim());
-        if (dbUser.passwordHash !== passHash) {
-          setError('Неверный пароль');
-          setIsLoading(false);
-          return;
-        }
-
-        // Successful login - Migrate any legacy projects to this user
-        await migrateLegacyProjectsToUser(dbUser.username);
-
-        dispatch(loginUser({
-          username: dbUser.username,
-          email: dbUser.email,
-          fullName: dbUser.fullName
-        }));
+      const cleanEmail = username.trim();
+      // Online login using Go backend API
+      const loginData = await api.login(cleanEmail, password.trim());
+      const token = loginData.token;
+      
+      let decodedPayload: any = {};
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        decodedPayload = JSON.parse(jsonPayload);
+      } catch (e) {
+        console.error('Failed to decode JWT token:', e);
       }
+
+      const usernameParsed = decodedPayload.email?.split('@')[0] || cleanEmail.split('@')[0] || 'user';
+      const user = {
+        username: usernameParsed,
+        email: decodedPayload.email || cleanEmail,
+        fullName: decodedPayload.fullName || decodedPayload.name || usernameParsed
+      };
+
+      // Migrate any local legacy projects to this user
+      await migrateLegacyProjectsToUser(user.username);
+
+      dispatch(loginUser(user));
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err?.message || 'Произошла ошибка при входе. Попробуйте еще раз.');

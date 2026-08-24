@@ -1,12 +1,7 @@
-const getApiBaseUrl = () => {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return ''; // Proxied by Vite dev server
-  }
-  return 'https://typstlab-api.safarislava.tech';
-};
+import { config } from '../config/env';
 
 class ApiClient {
-  private baseUrl: string = getApiBaseUrl();
+  private baseUrl: string = config.apiBaseUrl;
   private token: string | null = localStorage.getItem('typstlab_access_token');
   private onTokenRefreshed: ((token: string) => void) | null = null;
   private onAuthError: (() => void) | null = null;

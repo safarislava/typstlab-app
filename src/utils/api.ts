@@ -1,238 +1,97 @@
-import { config } from '../config/env';
+import { httpClient, authApi, projectsApi, filesApi } from '../services/api';
 
-class ApiClient {
-  private baseUrl: string = config.apiBaseUrl;
-  private token: string | null = localStorage.getItem('typstlab_access_token');
-  private onTokenRefreshed: ((token: string) => void) | null = null;
-  private onAuthError: (() => void) | null = null;
-
+class ApiCompatibilityWrapper {
   public setToken(token: string | null) {
-    this.token = token;
-    if (token) {
-      localStorage.setItem('typstlab_access_token', token);
-    } else {
-      localStorage.removeItem('typstlab_access_token');
-    }
+    httpClient.setToken(token);
   }
 
   public getToken() {
-    return this.token;
+    return httpClient.getToken();
   }
 
   public async checkHealth(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/health?_t=${Date.now()}`, {
-        method: 'GET',
-        cache: 'no-store'
-      });
-      return response.status === 200;
-    } catch {
-      return false;
-    }
+    return httpClient.checkHealth();
   }
 
-  private onNetworkError: (() => void) | null = null;
-
   public registerTokenRefreshCallback(callback: (token: string) => void) {
-    this.onTokenRefreshed = callback;
+    httpClient.registerTokenRefreshCallback(callback);
   }
 
   public registerAuthErrorCallback(callback: () => void) {
-    this.onAuthError = callback;
+    httpClient.registerAuthErrorCallback(callback);
   }
 
   public registerNetworkErrorCallback(callback: () => void) {
-    this.onNetworkError = callback;
-  }
-
-  private async request(path: string, options: RequestInit = {}): Promise<any> {
-    const url = `${this.baseUrl}${path}`;
-    
-    // Set headers
-    const headers = new Headers(options.headers || {});
-    if (this.token) {
-      headers.set('Authorization', `Bearer ${this.token}`);
-    }
-    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
-      headers.set('Content-Type', 'application/json');
-    }
-
-    const config = {
-      ...options,
-      headers
-    };
-
-    let response: Response;
-    try {
-      response = await fetch(url, config);
-    } catch (fetchErr) {
-      if (this.onNetworkError && path !== '/health') {
-        this.onNetworkError();
-      }
-      throw fetchErr;
-    }
-
-    // Auto-refresh token if 401
-    if (response.status === 401 && path !== '/login' && path !== '/register' && path !== '/refresh') {
-      try {
-        const refreshedToken = await this.refresh();
-        if (refreshedToken) {
-          headers.set('Authorization', `Bearer ${refreshedToken}`);
-          response = await fetch(url, {
-            ...options,
-            headers
-          });
-        }
-      } catch (err) {
-        console.error('Failed to auto-refresh token:', err);
-        if (this.onAuthError) {
-          this.onAuthError();
-        }
-      }
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorJson: any;
-      try {
-        errorJson = JSON.parse(errorText);
-      } catch {
-        errorJson = { message: errorText || response.statusText };
-      }
-      throw new Error(errorJson.message || errorJson.error || `HTTP error ${response.status}`);
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return response.json();
+    httpClient.registerNetworkErrorCallback(callback);
   }
 
   public async register(email: string, password: string, role: string = 'user'): Promise<any> {
-    return this.request('/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, role })
-    });
+    return authApi.register(email, password, role);
   }
 
   public async login(email: string, password: string): Promise<{ token: string }> {
-    const data = await this.request('/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password })
-    });
-    this.setToken(data.token);
-    return data;
+    return authApi.login(email, password);
   }
 
   public async refresh(): Promise<string> {
-    // The browser will automatically send the HttpOnly refresh_token cookie
-    const data = await this.request('/refresh', {
-      method: 'POST'
-    });
-    if (data && data.token) {
-      this.setToken(data.token);
-      if (this.onTokenRefreshed) {
-        this.onTokenRefreshed(data.token);
-      }
-      return data.token;
-    }
-    throw new Error('No token returned on refresh');
+    return authApi.refresh();
   }
 
   public async logout(): Promise<void> {
-    try {
-      await this.request('/logout', {
-        method: 'POST'
-      });
-    } finally {
-      this.setToken(null);
-    }
+    return authApi.logout();
   }
 
   public async createProject(name: string): Promise<{ id: string; name: string; updated_at: string }> {
-    return this.request('/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name })
-    });
+    return projectsApi.createProject(name) as any;
   }
 
   public async createProjectWithId(id: string, name: string): Promise<{ id: string; name: string; updated_at: string }> {
-    return this.request('/projects', {
-      method: 'POST',
-      body: JSON.stringify({ id, name })
-    });
+    return projectsApi.createProjectWithId(id, name) as any;
   }
 
   public async syncProject(projectId: string, files: any[]): Promise<{ instructions: any[] }> {
-    return this.request(`/projects/${projectId}/sync`, {
-      method: 'POST',
-      body: JSON.stringify({ files })
-    });
+    return projectsApi.syncProject(projectId, files);
   }
 
   public async createFileWithId(projectId: string, fileData: { id: string; name: string; type: 'typst' | 'binary'; content?: string }): Promise<any> {
-    return this.request(`/projects/${projectId}/files`, {
-      method: 'POST',
-      body: JSON.stringify(fileData)
-    });
+    return filesApi.createFileWithId(projectId, fileData);
   }
 
   public async getProjectDetails(projectId: string): Promise<any> {
-    return this.request(`/projects/${projectId}`);
+    return projectsApi.getProjectDetails(projectId);
   }
 
   public async getProjectFiles(projectId: string): Promise<any[]> {
-    return this.request(`/projects/${projectId}/files`);
+    return filesApi.getProjectFiles(projectId);
   }
 
   public async createTypstFile(projectId: string, name: string): Promise<any> {
-    return this.request(`/projects/${projectId}/files/typst`, {
-      method: 'POST',
-      body: JSON.stringify({ name })
-    });
+    return filesApi.createTypstFile(projectId, name);
   }
 
   public async createBinaryFile(projectId: string, name: string, contentBase64: string): Promise<any> {
-    return this.request(`/projects/${projectId}/files/binary`, {
-      method: 'POST',
-      body: JSON.stringify({ name, content: contentBase64 })
-    });
+    return filesApi.createBinaryFile(projectId, name, contentBase64);
   }
 
   public async deleteFile(projectId: string, fileId: string): Promise<void> {
-    return this.request(`/projects/${projectId}/files/${fileId}`, {
-      method: 'DELETE'
-    });
+    return filesApi.deleteFile(projectId, fileId);
   }
 
   public async getTypstFile(fileId: string): Promise<any> {
-    return this.request(`/files/typst/${fileId}`);
+    return filesApi.getTypstFile(fileId);
   }
 
   public async sendTypstFileChanges(fileId: string, deltaBase64: string): Promise<any> {
-    return this.request(`/files/typst/${fileId}/changes`, {
-      method: 'POST',
-      body: JSON.stringify({ delta: deltaBase64 })
-    });
+    return filesApi.sendTypstFileChanges(fileId, deltaBase64);
   }
 
   public async getBinaryFileMetadata(fileId: string): Promise<any> {
-    return this.request(`/files/binary/${fileId}`);
+    return filesApi.getBinaryFileMetadata(fileId);
   }
 
   public async getBinaryFileRaw(fileId: string): Promise<ArrayBuffer> {
-    const url = `${this.baseUrl}/files/binary/${fileId}/raw`;
-    const headers = new Headers();
-    if (this.token) {
-      headers.set('Authorization', `Bearer ${this.token}`);
-    }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch raw binary: ${response.statusText}`);
-    }
-    return response.arrayBuffer();
+    return filesApi.getBinaryFileRaw(fileId);
   }
 }
 
-export const api = new ApiClient();
+export const api = new ApiCompatibilityWrapper();

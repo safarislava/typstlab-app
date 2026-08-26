@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { setPreviewMode } from '../../store/slices/editorSlice';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { setPreviewMode } from '../../store';
 import { EditorHeader } from './Header/EditorHeader';
 import { Sidebar } from '../Sidebar';
 import { EditorWorkspace } from '../EditorWorkspace';
 import { PreviewPanel } from '../PreviewPanel';
-import { useSplitPane } from '../../hooks/useSplitPane';
-import { useProjectLoader } from '../../hooks/useProjectLoader';
+import { useSplitPane } from '../../hooks';
+import { useProjectLoader } from '../../hooks';
 import type { SidebarTab } from '../sidebar/SidebarDock';
 
 interface EditorLayoutProps {

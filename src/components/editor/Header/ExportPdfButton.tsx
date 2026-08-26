@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download } from 'lucide-react';
-import { useTypstCompiler } from '../../../hooks/useTypstCompiler';
+import { useTypstCompiler } from '../../../hooks';
 
 export const ExportPdfButton: React.FC = () => {
   const { compilerReady, isCompiling, exportPdf } = useTypstCompiler();

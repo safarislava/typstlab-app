@@ -3,8 +3,8 @@ import {
   projectRepository, 
   fileRepository, 
   userRepository 
-} from '../services/storage';
-import { hashPassword } from '../services/auth';
+} from '../services';
+import { hashPassword } from '../services';
 
 export type { TypstProject, DBTypstFile, DBUser } from '../core/types';
 

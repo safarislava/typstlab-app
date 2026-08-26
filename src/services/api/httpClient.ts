@@ -1,5 +1,5 @@
 import { config } from '../../config/env';
-import { tokenStorage } from '../auth/tokenStorage';
+import { tokenStorage } from '../auth';
 import type { NetworkErrorListener, AuthErrorListener, TokenRefreshListener } from '../../core/types';
 
 export class HttpClient {

@@ -1,3 +1,3 @@
-import { persistenceMiddleware } from './middleware/persistence.mw';
+import { persistenceMiddleware } from './middleware';
 
 export const dbMiddleware = persistenceMiddleware;

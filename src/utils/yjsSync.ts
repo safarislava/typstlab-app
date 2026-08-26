@@ -6,7 +6,7 @@ import {
   encodeYjsStateVector, 
   applyYjsDelta,
   yjsDocManager
-} from '../services/sync';
+} from '../services';
 
 export {
   encodeCellsToYjsDelta,

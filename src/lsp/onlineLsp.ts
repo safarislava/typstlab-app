@@ -5,9 +5,9 @@ import type { CompletionResult } from '@codemirror/autocomplete';
 
 // A lightweight, fully featured client for communicating with remote LSP via WebSockets
 export class WebSocketLspClient {
-  private socket: WebSocket | null = null;
-  private wsUrl: string;
-  private id: string;
+  private readonly socket: WebSocket | null = null;
+  private readonly wsUrl: string;
+  private readonly id: string;
   private onDiagnostics: (diagnostics: any[]) => void = () => {};
   private completionResolver: ((results: any) => void) | null = null;
   private isConnected = false;

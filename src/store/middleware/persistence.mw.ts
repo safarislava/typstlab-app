@@ -1,5 +1,5 @@
 import type { Middleware } from '@reduxjs/toolkit';
-import { projectRepository, fileRepository } from '../../services/storage';
+import { projectRepository, fileRepository } from '../../services';
 
 export const persistenceMiddleware: Middleware = store => next => action => {
   const type = (action as any).type;

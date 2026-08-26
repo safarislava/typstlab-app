@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store';
 import { loginUser, setScreen } from '../store/documentSlice';
 import { migrateLegacyProjectsToUser } from '../store/db';
 import { api } from '../utils/api';

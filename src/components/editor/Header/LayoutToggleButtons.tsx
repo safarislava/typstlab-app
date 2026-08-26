@@ -1,7 +1,7 @@
 import React from 'react';
 import { Edit3, Columns, Eye } from 'lucide-react';
-import { useAppSelector, useAppDispatch } from '../../../store/hooks';
-import { setPreviewMode } from '../../../store/slices/editorSlice';
+import { useAppSelector, useAppDispatch } from '../../../store';
+import { setPreviewMode } from '../../../store';
 
 export const LayoutToggleButtons: React.FC = () => {
   const dispatch = useAppDispatch();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppSelector } from '../store/hooks';
+import { useAppSelector } from '../store';
 import { CellList } from './CellList';
 import { WordRibbon } from './WordRibbon';
 import { BinaryPreview } from './editor/Workspace/BinaryPreview';

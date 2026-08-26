@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store';
 import { updateCellContent, updateCellTitle } from '../store/documentSlice';
 import { useLspExtensions } from '../lsp/lspManager';
 import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';

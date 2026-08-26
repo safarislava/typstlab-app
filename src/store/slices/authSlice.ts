@@ -1,8 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { User, ScreenType } from '../../core/types';
-import { tokenStorage } from '../../services/auth/tokenStorage';
-import { httpClient } from '../../services/api/httpClient';
+import { tokenStorage } from '../../services';
+import { httpClient } from '../../services';
 
 interface AuthState {
   currentUser: User | null;

@@ -1,7 +1,7 @@
 import React from 'react';
-import { useAppSelector, useAppDispatch } from '../../../store/hooks';
-import { updateProjectName } from '../../../store/slices/projectsSlice';
-import { setTitle } from '../../../store/slices/editorSlice';
+import { useAppSelector, useAppDispatch } from '../../../store';
+import { updateProjectName } from '../../../store';
+import { setTitle } from '../../../store';
 
 export const ProjectTitleInput: React.FC = () => {
   const dispatch = useAppDispatch();

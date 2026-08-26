@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { useAppSelector, useAppDispatch } from '../../store';
 import { 
   addProject, 
   deleteProject, 
   updateProjectName, 
   setProjects 
-} from '../../store/slices/projectsSlice';
-import { projectRepository } from '../../services/storage';
-import { projectsApi } from '../../services/api';
+} from '../../store';
+import { projectRepository } from '../../services';
+import { projectsApi } from '../../services';
 import { DashboardWelcome } from './DashboardWelcome';
 import { ProjectSearchBar } from './ProjectSearchBar';
 import { ProjectGrid } from './ProjectGrid';

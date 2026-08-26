@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setConnectionStatus } from '../store/slices/networkSlice';
-import { logoutUser } from '../store/slices/authSlice';
-import { authApi, httpClient } from '../services/api';
+import { useAppDispatch, useAppSelector } from '../store';
+import { setConnectionStatus } from '../store';
+import { logoutUser } from '../store';
+import { authApi, httpClient } from '../services';
 
 export function useNetworkStatus() {
   const dispatch = useAppDispatch();

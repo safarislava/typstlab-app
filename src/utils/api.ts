@@ -1,4 +1,4 @@
-import { httpClient, authApi, projectsApi, filesApi } from '../services/api';
+import { httpClient, authApi, projectsApi, filesApi } from '../services';
 
 class ApiCompatibilityWrapper {
   public setToken(token: string | null) {

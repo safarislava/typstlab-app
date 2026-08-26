@@ -1,13 +1,13 @@
 import { useEffect, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store';
 import { 
   setCompilerReady, 
   setCompilerError, 
   setIsCompiling 
-} from '../store/slices/compilerSlice';
-import { wasmLoader } from '../services/compiler/wasmLoader';
-import { syncFilesToVfs } from '../services/compiler/vfsBridge';
-import { exportProjectToPdf } from '../services/compiler/pdfExporter';
+} from '../store';
+import { wasmLoader } from '../services';
+import { syncFilesToVfs } from '../services';
+import { exportProjectToPdf } from '../services';
 
 export function useTypstCompiler() {
   const dispatch = useAppDispatch();

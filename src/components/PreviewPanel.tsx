@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store';
 import { setIsCompiling, setCompilerError } from '../store/documentSlice';
 import { RefreshCw, AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Hand, Maximize2 } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
 import { globalCompilerQueue } from '../lsp/compilerQueue';
-import { syncFilesToVfs } from '../utils/vfsSync';
+import { syncFilesToVfs } from '../services';
 
 interface PageData {
   svgHtml: string;

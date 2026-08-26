@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { loginUser, setScreen } from '../store/slices/authSlice';
-import { projectRepository } from '../services/storage';
-import { authApi } from '../services/api';
-import { extractUserFromToken } from '../services/auth/jwtDecoder';
+import { useAppDispatch, useAppSelector } from '../store';
+import { loginUser, setScreen } from '../store';
+import { projectRepository } from '../services';
+import { authApi } from '../services';
+import { extractUserFromToken } from '../services';
 import { Lock, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;

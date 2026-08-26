@@ -1,10 +1,10 @@
 import type { Middleware } from '@reduxjs/toolkit';
-import { filesApi } from '../../services/api';
+import { filesApi } from '../../services';
 import { 
   encodeCellsToYjsDelta, 
   uint8ArrayToBase64, 
   yjsDocManager 
-} from '../../services/sync';
+} from '../../services';
 
 const fileSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const SYNC_DEBOUNCE_MS = 600;

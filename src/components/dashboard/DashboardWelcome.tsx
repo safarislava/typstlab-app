@@ -1,7 +1,7 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { logoutUser } from '../../store/slices/authSlice';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { logoutUser } from '../../store';
 
 export const DashboardWelcome: React.FC = () => {
   const dispatch = useAppDispatch();

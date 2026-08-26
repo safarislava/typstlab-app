@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader, AlertCircle } from 'lucide-react';
-import { useAppSelector } from '../../store/hooks';
+import { useAppSelector } from '../../store';
 
 export const StatusBadge: React.FC = () => {
   const { isCompiling, compilerReady, compilerError } = useAppSelector(

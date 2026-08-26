@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setScreen } from '../store/slices/authSlice';
-import { setCurrentProjectId } from '../store/slices/projectsSlice';
+import { useAppDispatch, useAppSelector } from '../store';
+import { setScreen } from '../store';
+import { setCurrentProjectId } from '../store';
 import type { ScreenType } from '../core/types';
 
 export function useHashRouter() {

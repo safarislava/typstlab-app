@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { initializeProject } from '../store/slices/editorSlice';
-import { setCurrentProjectId } from '../store/slices/projectsSlice';
-import { projectRepository, fileRepository } from '../services/storage';
-import { syncProjectWithServer } from '../services/sync/projectSync';
+import { useAppDispatch, useAppSelector } from '../store';
+import { initializeProject } from '../store';
+import { setCurrentProjectId } from '../store';
+import { projectRepository, fileRepository } from '../services';
+import { syncProjectWithServer } from '../services';
 import type { TypstFile } from '../core/types';
 
 export function useProjectLoader() {

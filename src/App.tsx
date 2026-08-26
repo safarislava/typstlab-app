@@ -1,6 +1,6 @@
-import { useTypstCompiler } from './hooks/useTypstCompiler';
-import { useNetworkStatus } from './hooks/useNetworkStatus';
-import { useHashRouter } from './hooks/useHashRouter';
+import { useTypstCompiler } from './hooks';
+import { useNetworkStatus } from './hooks';
+import { useHashRouter } from './hooks';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { DashboardView } from './components/dashboard/DashboardView';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch } from '../store';
 import { setActiveCellId } from '../store/documentSlice';
 import { SidebarDock } from './sidebar/SidebarDock';
 import type { SidebarTab } from './sidebar/SidebarDock';

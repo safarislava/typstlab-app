@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppSelector } from '../../store/hooks';
+import { useAppSelector } from '../../store';
 import { AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 
 export const CompilerTab: React.FC = () => {

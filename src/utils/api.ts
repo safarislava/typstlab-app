@@ -23,11 +23,7 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseUrl}/health?_t=${Date.now()}`, {
         method: 'GET',
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
+        cache: 'no-store'
       });
       return response.status === 200;
     } catch {

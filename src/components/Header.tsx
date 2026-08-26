@@ -47,7 +47,7 @@ export const Header: React.FC = () => {
   };
 
   const handleExportPDF = async () => {
-    if (!compilerReady) return;
+    if (!compilerReady || !activeFilePath || !files[activeFilePath] || files[activeFilePath].isBinary) return;
     try {
       // Sync all files to the compiler virtual file system (VFS)
       await syncFilesToVfs(files);

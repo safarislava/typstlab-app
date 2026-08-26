@@ -25,6 +25,9 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+    preview: {
+      port: 3000
+    },
     build: {
       rollupOptions: {
         output: {

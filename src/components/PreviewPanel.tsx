@@ -207,6 +207,12 @@ export const PreviewPanel: React.FC = () => {
   useEffect(() => {
     if (!compilerReady) return;
 
+    if (!activeFilePath || !files[activeFilePath] || files[activeFilePath].isBinary) {
+      setRenderedPages([]);
+      dispatch(setCompilerError(null));
+      return;
+    }
+
     const compileTimer = setTimeout(async () => {
       dispatch(setIsCompiling(true));
 

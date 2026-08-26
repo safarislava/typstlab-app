@@ -10,6 +10,7 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const Register: React.FC = () => {
   const dispatch = useAppDispatch();
   const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
+  const currentProjectId = useAppSelector((state) => state.document.currentProjectId);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +21,15 @@ export const Register: React.FC = () => {
   
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (connectionStatus === 'offline') {
+      dispatch(setScreen(currentProjectId ? 'editor' : 'dashboard'));
+      if (window.location.hash === '#/login' || window.location.hash === '#/register') {
+        window.location.hash = currentProjectId ? `#/project/${currentProjectId}` : '#/';
+      }
+    }
+  }, [connectionStatus, dispatch, currentProjectId]);
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();

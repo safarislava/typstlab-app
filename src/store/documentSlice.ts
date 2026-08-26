@@ -58,6 +58,7 @@ const getStoredUser = (): User | null => {
   }
 };
 
+const isInitiallyOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
 const storedUser = getStoredUser();
 
 const initialState: DocumentState = {
@@ -67,12 +68,12 @@ const initialState: DocumentState = {
   activeCellId: null,
   previewMode: 'side-by-side',
   isCompiling: false,
-  connectionStatus: 'connected',
+  connectionStatus: isInitiallyOffline ? 'offline' : 'connected',
   compilerReady: false,
   compilerError: null,
   currentProjectId: null,
   projects: [],
-  screen: storedUser ? 'dashboard' : 'login',
+  screen: (storedUser || isInitiallyOffline) ? 'dashboard' : 'login',
   currentUser: storedUser
 };
 
@@ -158,8 +159,13 @@ const documentSlice = createSlice({
           state.activeFilePath = '';
           state.activeCellId = null;
         }
-      } else if (action.payload === 'offline' && (state.screen === 'login' || state.screen === 'register')) {
-        state.screen = 'dashboard';
+      } else if (action.payload === 'offline') {
+        if (state.screen === 'login' || state.screen === 'register') {
+          state.screen = state.currentProjectId ? 'editor' : 'dashboard';
+        }
+        if (typeof window !== 'undefined' && (window.location.hash === '#/login' || window.location.hash === '#/register')) {
+          window.location.hash = state.currentProjectId ? `#/project/${state.currentProjectId}` : '#/';
+        }
       }
     },
     setCompilerReady: (state, action: PayloadAction<boolean>) => {
@@ -177,8 +183,10 @@ const documentSlice = createSlice({
       state.currentProjectId = action.payload;
       const isOffline = state.connectionStatus === 'offline';
       if (action.payload === null) {
-        if (state.screen !== 'login' && state.screen !== 'register') {
-          state.screen = (isOffline || state.currentUser) ? 'dashboard' : 'login';
+        if (isOffline) {
+          state.screen = 'dashboard';
+        } else if (state.screen !== 'login' && state.screen !== 'register') {
+          state.screen = state.currentUser ? 'dashboard' : 'login';
         }
         state.files = {};
         state.activeFilePath = '';
@@ -210,6 +218,13 @@ const documentSlice = createSlice({
       }
     },
     setScreen: (state, action: PayloadAction<'dashboard' | 'editor' | 'login' | 'register'>) => {
+      if (state.connectionStatus === 'offline' && (action.payload === 'login' || action.payload === 'register')) {
+        state.screen = state.currentProjectId ? 'editor' : 'dashboard';
+        if (typeof window !== 'undefined' && (window.location.hash === '#/login' || window.location.hash === '#/register')) {
+          window.location.hash = state.currentProjectId ? `#/project/${state.currentProjectId}` : '#/';
+        }
+        return;
+      }
       state.screen = action.payload;
     },
     loginUser: (state, action: PayloadAction<User>) => {
@@ -220,14 +235,21 @@ const documentSlice = createSlice({
     },
     logoutUser: (state) => {
       state.currentUser = null;
-      state.screen = 'login';
-      state.currentProjectId = null;
-      state.files = {};
-      state.activeFilePath = '';
-      state.activeCellId = null;
       localStorage.removeItem('typstlab_user');
       api.setToken(null);
-      window.location.hash = '#/login';
+      if (state.connectionStatus === 'offline') {
+        state.screen = state.currentProjectId ? 'editor' : 'dashboard';
+        if (typeof window !== 'undefined' && (window.location.hash === '#/login' || window.location.hash === '#/register')) {
+          window.location.hash = state.currentProjectId ? `#/project/${state.currentProjectId}` : '#/';
+        }
+      } else {
+        state.screen = 'login';
+        state.currentProjectId = null;
+        state.files = {};
+        state.activeFilePath = '';
+        state.activeCellId = null;
+        window.location.hash = '#/login';
+      }
     },
     
     // Multi-file actions

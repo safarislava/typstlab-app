@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen, setPreviewMode } from './store/documentSlice';
+import { setCompilerReady, setCompilerError, setProjects, setCurrentProjectId, initializeProject, setConnectionStatus, setScreen, setPreviewMode, logoutUser } from './store/documentSlice';
 import type { TypstFile } from './store/documentSlice';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -24,6 +24,7 @@ function App() {
   const screen = useAppSelector((state) => state.document.screen);
   const currentUser = useAppSelector((state) => state.document.currentUser);
   const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
+  const currentProjectId = useAppSelector((state) => state.document.currentProjectId);
 
   // Layout resizing states
   const [sidebarWidth, setSidebarWidth] = useState(240);
@@ -54,12 +55,17 @@ function App() {
     void initWasm();
   }, [dispatch]);
 
-  // Register global network error listener to transition to offline state when API calls fail
+  // Register global network error listener & auth error listener
   useEffect(() => {
     api.registerNetworkErrorCallback(() => {
       dispatch(setConnectionStatus('offline'));
     });
-  }, [dispatch]);
+    api.registerAuthErrorCallback(() => {
+      if (connectionStatus === 'connected') {
+        dispatch(logoutUser());
+      }
+    });
+  }, [dispatch, connectionStatus]);
 
   // Check backend (HTTP /health) availability ONLY once on site startup and on browser online event
   useEffect(() => {
@@ -190,11 +196,25 @@ function App() {
           window.location.hash = '#/';
         }
       } else if (hash === '#/login') {
-        dispatch(setCurrentProjectId(null));
-        dispatch(setScreen('login'));
+        if (connectionStatus === 'offline') {
+          if (window.location.hash === '#/login') {
+            window.location.hash = currentProjectId ? `#/project/${currentProjectId}` : '#/';
+          }
+          dispatch(setScreen(currentProjectId ? 'editor' : 'dashboard'));
+        } else {
+          dispatch(setCurrentProjectId(null));
+          dispatch(setScreen('login'));
+        }
       } else if (hash === '#/register') {
-        dispatch(setCurrentProjectId(null));
-        dispatch(setScreen('register'));
+        if (connectionStatus === 'offline') {
+          if (window.location.hash === '#/register') {
+            window.location.hash = currentProjectId ? `#/project/${currentProjectId}` : '#/';
+          }
+          dispatch(setScreen(currentProjectId ? 'editor' : 'dashboard'));
+        } else {
+          dispatch(setCurrentProjectId(null));
+          dispatch(setScreen('register'));
+        }
       } else {
         dispatch(setCurrentProjectId(null));
         if (connectionStatus === 'connected' && !currentUser) {
@@ -216,7 +236,7 @@ function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [dispatch, connectionStatus, currentUser, screen]);
+  }, [dispatch, connectionStatus, currentUser, screen, currentProjectId]);
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [isWorkspaceNarrow, setIsWorkspaceNarrow] = useState(false);

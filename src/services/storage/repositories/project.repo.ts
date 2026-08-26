@@ -67,16 +67,22 @@ export const projectRepository = {
   async migrateLegacyProjectsToUser(username: string): Promise<TypstProject[]> {
     const allProjects = await this.getAll();
     const migrated: TypstProject[] = [];
+    const savePromises: Promise<void>[] = [];
 
     for (const project of allProjects) {
       if (!project.ownerId) {
         const updatedProject: TypstProject = { ...project, ownerId: username };
-        await this.save(updatedProject);
+        savePromises.push(this.save(updatedProject));
         migrated.push(updatedProject);
       } else if (project.ownerId === username) {
         migrated.push(project);
       }
     }
+
+    if (savePromises.length > 0) {
+      await Promise.all(savePromises);
+    }
+
     return migrated;
   }
 };

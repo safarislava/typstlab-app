@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { loginUser, setScreen } from '../store/documentSlice';
-import { migrateLegacyProjectsToUser } from '../store/db';
-import { api } from '../utils/api';
-import { Lock, User, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
+import { loginUser, setScreen } from '../store/slices/authSlice';
+import { projectRepository } from '../services/storage';
+import { authApi } from '../services/api';
+import { extractUserFromToken } from '../services/auth/jwtDecoder';
+import { Lock, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const Login: React.FC = () => {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
-  const currentProjectId = useAppSelector((state) => state.document.currentProjectId);
+  const connectionStatus = useAppSelector(state => state.network?.connectionStatus || state.document?.connectionStatus);
+  const currentProjectId = useAppSelector(state => state.projects?.currentProjectId || state.document?.currentProjectId);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (connectionStatus === 'offline') {
       dispatch(setScreen(currentProjectId ? 'editor' : 'dashboard'));
       if (window.location.hash === '#/login' || window.location.hash === '#/register') {
@@ -26,8 +27,8 @@ export const Login: React.FC = () => {
     }
   }, [connectionStatus, dispatch, currentProjectId]);
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (submitEvent: React.SyntheticEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault();
     const cleanInput = username.trim().toLowerCase();
     if (!cleanInput || !password.trim()) {
       setError('Пожалуйста, заполните все поля');
@@ -49,31 +50,11 @@ export const Login: React.FC = () => {
 
     try {
       const cleanEmail = username.trim();
-      // Online login using Go backend API
-      const loginData = await api.login(cleanEmail, password.trim());
-      const token = loginData.token;
-      
-      let decodedPayload: any = {};
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        decodedPayload = JSON.parse(jsonPayload);
-      } catch (e) {
-        console.error('Failed to decode JWT token:', e);
-      }
-
-      const usernameParsed = decodedPayload.email?.split('@')[0] || cleanEmail.split('@')[0] || 'user';
-      const user = {
-        username: usernameParsed,
-        email: decodedPayload.email || cleanEmail,
-        fullName: decodedPayload.fullName || decodedPayload.name || usernameParsed
-      };
+      const loginData = await authApi.login(cleanEmail, password.trim());
+      const user = extractUserFromToken(loginData.token, cleanEmail);
 
       // Migrate any local legacy projects to this user
-      await migrateLegacyProjectsToUser(user.username);
+      await projectRepository.migrateLegacyProjectsToUser(user.username);
 
       dispatch(loginUser(user));
     } catch (err: any) {
@@ -83,7 +64,6 @@ export const Login: React.FC = () => {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="auth-container">
@@ -98,66 +78,64 @@ export const Login: React.FC = () => {
               <code>f(x) = ∫ e^(-x²) dx</code>
             </div>
             <div className="equation-badge secondary">
-              <code>#let alert(body) = [ ... ]</code>
+              <code>#show: doc =&gt; ...</code>
             </div>
           </div>
-          <p className="auth-banner-text">
-            Интерактивная среда для компиляции и управления Typst документами.
-          </p>
+          <div className="auth-banner-text">
+            <h2>Профессиональный редактор документов</h2>
+            <p>Создавайте отчеты, статьи и презентации нового поколения на Typst с интерактивными ячейками.</p>
+          </div>
         </div>
 
-        <div className="auth-form-side">
+        <div className="auth-form-card">
           <div className="auth-header">
-            <h2>С возвращением!</h2>
-            <p>Войдите в свой аккаунт для продолжения работы</p>
+            <h2>Вход в TypstLab</h2>
+            <p>Введите ваш Email и пароль для доступа к облачным проектам</p>
           </div>
 
           {error && (
-            <div className="auth-error-alert animate-shake">
+            <div className="auth-error-banner">
               <AlertCircle size={16} />
               <span>{error}</span>
             </div>
           )}
 
-          <form className="auth-form" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
-              <label htmlFor="username">
-                {connectionStatus === 'connected' ? 'Email / Имя пользователя' : 'Имя пользователя'}
-              </label>
-              <div className="input-wrapper">
-                <User size={16} className="input-icon" />
+              <label htmlFor="username">Email</label>
+              <div className="input-with-icon">
+                <Key className="input-icon" size={16} />
                 <input
                   id="username"
-                  type="text"
-                  placeholder={connectionStatus === 'connected' ? "Введите email или имя пользователя" : "Введите имя пользователя"}
+                  type="email"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(inputEv) => setUsername(inputEv.target.value)}
+                  placeholder="name@example.com"
+                  autoComplete="email"
                   disabled={isLoading}
-                  autoComplete="username"
-                  required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Пароль</label>
-              <div className="input-wrapper">
-                <Lock size={16} className="input-icon" />
+              <div className="label-row">
+                <label htmlFor="password">Пароль</label>
+              </div>
+              <div className="input-with-icon">
+                <Lock className="input-icon" size={16} />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Введите пароль"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
+                  onChange={(inputEv) => setPassword(inputEv.target.value)}
+                  placeholder="••••••••"
                   autoComplete="current-password"
-                  required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -165,32 +143,36 @@ export const Login: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+            <button
+              type="submit"
+              className="btn-auth-primary"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader className="spinner-small" size={16} />
                   <span>Вход...</span>
                 </>
               ) : (
-                <>
-                  <Key size={16} />
-                  <span>Войти</span>
-                </>
+                <span>Войти в аккаунт</span>
               )}
             </button>
           </form>
 
           <div className="auth-footer">
-            <span>Нет аккаунта?</span>
-            <button
-              className="auth-link-btn"
-              onClick={() => {
-                window.location.hash = '#/register';
-                dispatch(setScreen('register'));
-              }}
-            >
-              Зарегистрироваться
-            </button>
+            <p>
+              Нет аккаунта?{' '}
+              <button 
+                type="button"
+                className="btn-auth-link"
+                onClick={() => {
+                  dispatch(setScreen('register'));
+                  window.location.hash = '#/register';
+                }}
+              >
+                Зарегистрироваться
+              </button>
+            </p>
           </div>
         </div>
       </div>

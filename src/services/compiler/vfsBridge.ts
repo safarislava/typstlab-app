@@ -9,14 +9,19 @@ const mappedPaths = new Set<string>();
 export async function syncFilesToVfs(files: Record<string, TypstFile>): Promise<void> {
   const currentPaths = new Set(Object.values(files).map(file => `/${file.path}`));
 
+  const unmapPromises: Promise<any>[] = [];
   for (const path of mappedPaths) {
     if (!currentPaths.has(path)) {
-      try {
-        await $typst.unmapShadow(path);
-      } catch (err) {
-        console.warn(`Failed to unmap shadow file ${path}:`, err);
-      }
+      unmapPromises.push(
+        $typst.unmapShadow(path).catch(err => {
+          console.warn(`Failed to unmap shadow file ${path}:`, err);
+        })
+      );
     }
+  }
+
+  if (unmapPromises.length > 0) {
+    await Promise.all(unmapPromises);
   }
 
   await Promise.all(

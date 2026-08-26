@@ -344,7 +344,7 @@ export const PreviewPanel: React.FC = () => {
 
               {!compilerError && renderedPages.length > 0 && renderedPages.map((page, index) => (
                 <div 
-                  key={index}
+                  key={`page-${index}-${page.width}x${page.height}`}
                   className="svg-render-container"
                   style={{
                     aspectRatio: `${page.width} / ${page.height}`,

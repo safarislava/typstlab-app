@@ -1,7 +1,14 @@
 import { useState, useCallback } from 'react';
-import { useAppDispatch, useAppSelector, initializeProject, setCurrentProjectId } from '../store';
-import { projectRepository, fileRepository, syncProjectWithServer } from '../services';
-import type { TypstFile } from '../core/types';
+import { 
+  useAppDispatch, 
+  useAppSelector, 
+  initializeProject, 
+  setCurrentProjectId, 
+  setProjects, 
+  setTitle 
+} from '../store';
+import { projectRepository, fileRepository, syncProjectWithServer, projectsApi } from '../services';
+import type { TypstFile, TypstProject } from '../core/types';
 
 export function useProjectLoader() {
   const dispatch = useAppDispatch();
@@ -25,22 +32,54 @@ export function useProjectLoader() {
           }
         }
 
-        // 2. Validate project exists in local storage
-        const allProjects = await projectRepository.getAll();
+        // 2. Validate and load project metadata
+        let allProjects = await projectRepository.getAll();
+        let targetProject = allProjects.find(p => p.id === projectId);
+
+        // If not found locally but connected, check server details
+        if (!targetProject && connectionStatus === 'connected') {
+          try {
+            const serverProj = await projectsApi.getProjectDetails(projectId);
+            if (serverProj && serverProj.id) {
+              const newLocalProj: TypstProject = {
+                id: serverProj.id,
+                name: serverProj.name || 'Untitled Project',
+                createdAt: serverProj.created_at ? new Date(serverProj.created_at).getTime() : Date.now(),
+                updatedAt: serverProj.updated_at ? new Date(serverProj.updated_at).getTime() : Date.now(),
+                ownerId: currentUser?.username || undefined
+              };
+              await projectRepository.save(newLocalProj);
+              allProjects = await projectRepository.getAll();
+              targetProject = newLocalProj;
+            }
+          } catch (serverErr) {
+            console.warn('Failed to fetch project details from server:', serverErr);
+          }
+        }
+
         const authorized =
           connectionStatus === 'connected'
             ? allProjects.some(
-                p => p.id === projectId && (!currentUser || p.ownerId === currentUser.username)
+                p => p.id === projectId && (!currentUser || !p.ownerId || p.ownerId === currentUser.username)
               )
             : allProjects.some(p => p.id === projectId);
 
-        if (!authorized) {
+        if (!authorized || !targetProject) {
           setError('Project not found or not authorized');
           setIsLoading(false);
           return false;
         }
 
-        // 3. Load files from IndexedDB into Redux
+        // 3. Populate projects list and title in Redux
+        const userProjects = (connectionStatus === 'connected' && currentUser)
+          ? allProjects.filter(p => !p.ownerId || p.ownerId === currentUser.username)
+          : allProjects;
+
+        dispatch(setProjects(userProjects));
+        dispatch(setCurrentProjectId(projectId));
+        dispatch(setTitle(targetProject.name));
+
+        // 4. Load files from IndexedDB into Redux
         const dbFiles = await fileRepository.getFilesForProject(projectId);
         let reduxFiles: TypstFile[] = dbFiles.map(f => {
           if (f.isBinary) {
@@ -90,7 +129,6 @@ export function useProjectLoader() {
         }
 
         dispatch(initializeProject(reduxFiles));
-        dispatch(setCurrentProjectId(projectId));
         setIsLoading(false);
         return true;
       } catch (err: any) {

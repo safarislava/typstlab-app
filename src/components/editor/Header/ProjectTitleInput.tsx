@@ -14,9 +14,8 @@ export const ProjectTitleInput: React.FC = () => {
     const newName = e.target.value;
     if (currentProjectId) {
       dispatch(updateProjectName({ id: currentProjectId, name: newName }));
-    } else {
-      dispatch(setTitle(newName));
     }
+    dispatch(setTitle(newName));
   };
 
   return (

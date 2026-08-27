@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 
 export const CompilerTab: React.FC = () => {
   const { compilerReady, compilerError } = useAppSelector(
-    (state) => state.document
+    (state) => state.compiler
   );
 
   return (

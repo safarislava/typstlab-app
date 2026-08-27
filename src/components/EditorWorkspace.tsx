@@ -2,10 +2,10 @@ import React from 'react';
 import { useAppSelector } from '../store';
 import { CellList } from './CellList';
 import { WordRibbon } from './WordRibbon';
-import { BinaryPreview } from './editor/Workspace/BinaryPreview';
+import { BinaryPreview } from './editor/Workspace';
 
 export const EditorWorkspace: React.FC = () => {
-  const { files, activeFilePath } = useAppSelector(state => state.editor || state.document);
+  const { files, activeFilePath } = useAppSelector(state => state.editor);
   const activeFile = files[activeFilePath];
 
   if (activeFile?.isBinary) {

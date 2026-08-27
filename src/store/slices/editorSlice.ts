@@ -1,5 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Cell, TypstFile, TextTypstFile, PreviewMode } from '../../core/types';
 import { parseXmlToCells } from '../../utils/xmlSerializer';
 

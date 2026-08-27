@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
-import { loginUser, setScreen } from '../store';
-import { projectRepository } from '../services';
-import { authApi } from '../services';
-import { extractUserFromToken } from '../services';
-import { Lock, Eye, EyeOff, AlertCircle, Loader, Key } from 'lucide-react';
+import { useAppDispatch, useAppSelector, loginUser, setScreen } from '../store';
+import { projectRepository, authApi, extractUserFromToken } from '../services';
+import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader, LogIn } from 'lucide-react';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const Login: React.FC = () => {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector(state => state.network?.connectionStatus || state.document?.connectionStatus);
-  const currentProjectId = useAppSelector(state => state.projects?.currentProjectId || state.document?.currentProjectId);
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
+  const currentProjectId = useAppSelector(state => state.projects.currentProjectId);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -81,20 +78,19 @@ export const Login: React.FC = () => {
               <code>#show: doc =&gt; ...</code>
             </div>
           </div>
-          <div className="auth-banner-text">
-            <h2>Профессиональный редактор документов</h2>
-            <p>Создавайте отчеты, статьи и презентации нового поколения на Typst с интерактивными ячейками.</p>
-          </div>
+          <p className="auth-banner-text">
+            Создавайте отчеты, статьи и презентации нового поколения на Typst с интерактивными ячейками.
+          </p>
         </div>
 
-        <div className="auth-form-card">
+        <div className="auth-form-side">
           <div className="auth-header">
             <h2>Вход в TypstLab</h2>
             <p>Введите ваш Email и пароль для доступа к облачным проектам</p>
           </div>
 
           {error && (
-            <div className="auth-error-banner">
+            <div className="auth-error-alert animate-shake">
               <AlertCircle size={16} />
               <span>{error}</span>
             </div>
@@ -103,8 +99,8 @@ export const Login: React.FC = () => {
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
               <label htmlFor="username">Email</label>
-              <div className="input-with-icon">
-                <Key className="input-icon" size={16} />
+              <div className="input-wrapper">
+                <Mail className="input-icon" size={16} />
                 <input
                   id="username"
                   type="email"
@@ -113,15 +109,14 @@ export const Login: React.FC = () => {
                   placeholder="name@example.com"
                   autoComplete="email"
                   disabled={isLoading}
+                  required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <div className="label-row">
-                <label htmlFor="password">Пароль</label>
-              </div>
-              <div className="input-with-icon">
+              <label htmlFor="password">Пароль</label>
+              <div className="input-wrapper">
                 <Lock className="input-icon" size={16} />
                 <input
                   id="password"
@@ -131,12 +126,14 @@ export const Login: React.FC = () => {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={isLoading}
+                  required
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -145,7 +142,7 @@ export const Login: React.FC = () => {
 
             <button
               type="submit"
-              className="btn-auth-primary"
+              className="auth-submit-btn"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -154,25 +151,26 @@ export const Login: React.FC = () => {
                   <span>Вход...</span>
                 </>
               ) : (
-                <span>Войти в аккаунт</span>
+                <>
+                  <LogIn size={16} />
+                  <span>Войти в аккаунт</span>
+                </>
               )}
             </button>
           </form>
 
           <div className="auth-footer">
-            <p>
-              Нет аккаунта?{' '}
-              <button 
-                type="button"
-                className="btn-auth-link"
-                onClick={() => {
-                  dispatch(setScreen('register'));
-                  window.location.hash = '#/register';
-                }}
-              >
-                Зарегистрироваться
-              </button>
-            </p>
+            <span>Нет аккаунта?</span>
+            <button 
+              type="button"
+              className="auth-link-btn"
+              onClick={() => {
+                dispatch(setScreen('register'));
+                window.location.hash = '#/register';
+              }}
+            >
+              Зарегистрироваться
+            </button>
           </div>
         </div>
       </div>

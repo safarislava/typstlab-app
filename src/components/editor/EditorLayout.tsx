@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAppSelector, useAppDispatch } from '../../store';
-import { setPreviewMode } from '../../store';
-import { EditorHeader } from './Header/EditorHeader';
+import { useAppSelector, useAppDispatch, setPreviewMode } from '../../store';
+import { EditorHeader } from './Header';
 import { Sidebar } from '../Sidebar';
 import { EditorWorkspace } from '../EditorWorkspace';
 import { PreviewPanel } from '../PreviewPanel';
-import { useSplitPane } from '../../hooks';
-import { useProjectLoader } from '../../hooks';
+import { useSplitPane, useProjectLoader } from '../../hooks';
 import type { SidebarTab } from '../sidebar/SidebarDock';
 
 interface EditorLayoutProps {
@@ -15,7 +13,7 @@ interface EditorLayoutProps {
 
 export const EditorLayout: React.FC<EditorLayoutProps> = ({ projectId }) => {
   const dispatch = useAppDispatch();
-  const previewMode = useAppSelector(state => state.editor?.previewMode || state.document?.previewMode);
+  const previewMode = useAppSelector(state => state.editor.previewMode);
   const [activeTab, setActiveTab] = useState<SidebarTab | null>('files');
   const [isWorkspaceNarrow, setIsWorkspaceNarrow] = useState(false);
 
@@ -101,7 +99,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ projectId }) => {
           )}
 
           {previewMode !== 'edit-only' && (
-            <div style={{ flex: 1, height: '100%', overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ flex: 1, height: '100%', minWidth: 0 }}>
               <PreviewPanel />
             </div>
           )}

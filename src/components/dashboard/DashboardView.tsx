@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '../../store';
 import { 
+  useAppSelector, 
+  useAppDispatch, 
   addProject, 
   deleteProject, 
   updateProjectName, 
   setProjects 
 } from '../../store';
-import { projectRepository } from '../../services';
-import { projectsApi } from '../../services';
+import { projectRepository, projectsApi } from '../../services';
 import { DashboardWelcome } from './DashboardWelcome';
 import { ProjectSearchBar } from './ProjectSearchBar';
 import { ProjectGrid } from './ProjectGrid';
@@ -15,9 +15,9 @@ import { CreateProjectModal } from './CreateProjectModal';
 
 export const DashboardView: React.FC = () => {
   const dispatch = useAppDispatch();
-  const projects = useAppSelector(state => state.projects?.projects || state.document?.projects);
-  const currentUser = useAppSelector(state => state.auth?.currentUser || state.document?.currentUser);
-  const connectionStatus = useAppSelector(state => state.network?.connectionStatus || state.document?.connectionStatus);
+  const projects = useAppSelector(state => state.projects.projects);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);

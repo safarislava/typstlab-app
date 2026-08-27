@@ -4,9 +4,7 @@ import networkReducer from './slices/networkSlice';
 import projectsReducer from './slices/projectsSlice';
 import editorReducer from './slices/editorSlice';
 import compilerReducer from './slices/compilerSlice';
-import documentReducer from './documentSlice';
-import { persistenceMiddleware } from './middleware';
-import { syncDebounceMiddleware } from './middleware';
+import { persistenceMiddleware, syncDebounceMiddleware } from './middleware';
 
 export const store = configureStore({
   reducer: {
@@ -15,8 +13,6 @@ export const store = configureStore({
     projects: projectsReducer,
     editor: editorReducer,
     compiler: compilerReducer,
-    // Backward compatibility slice
-    document: documentReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

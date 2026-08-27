@@ -1,27 +1,26 @@
 import { useEffect, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
 import { 
+  useAppDispatch, 
+  useAppSelector, 
   setCompilerReady, 
   setCompilerError, 
   setIsCompiling 
 } from '../store';
-import { wasmLoader } from '../services';
-import { syncFilesToVfs } from '../services';
-import { exportProjectToPdf } from '../services';
+import { wasmLoader, syncFilesToVfs, exportProjectToPdf } from '../services';
 
 export function useTypstCompiler() {
   const dispatch = useAppDispatch();
   const { compilerReady, isCompiling, compilerError } = useAppSelector(
-    state => state.compiler || state.document
+    state => state.compiler
   );
   const { files, activeFilePath } = useAppSelector(
-    state => state.editor || state.document
+    state => state.editor
   );
   const currentProjectId = useAppSelector(
-    state => state.projects?.currentProjectId || state.document?.currentProjectId
+    state => state.projects.currentProjectId
   );
   const projects = useAppSelector(
-    state => state.projects?.projects || state.document?.projects
+    state => state.projects.projects
   );
 
   // Initialize WASM compiler globally

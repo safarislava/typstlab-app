@@ -1,4 +1,4 @@
-import type { Cell } from '../store/documentSlice';
+import type { Cell } from '../core/types';
 
 /**
  * Escapes special characters for XML compatibility.

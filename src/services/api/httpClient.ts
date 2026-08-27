@@ -118,7 +118,9 @@ export class HttpClient {
       } catch {
         errorJson = { message: errorText || response.statusText };
       }
-      throw new Error(errorJson.message || errorJson.error || `HTTP error ${response.status}`);
+      const error = new Error(errorJson.message || errorJson.error || `HTTP error ${response.status}`);
+      (error as any).status = response.status;
+      throw error;
     }
 
     if (response.status === 204) {

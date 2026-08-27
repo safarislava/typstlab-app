@@ -6,15 +6,15 @@ export const persistenceMiddleware: Middleware = store => next => action => {
 
   // Track old metadata before reduction
   let oldRenamedPath: string | undefined;
-  if (type === 'editor/renameFile' || type === 'document/renameFile') {
+  if (type === 'editor/renameFile') {
     oldRenamedPath = (action as any).payload?.oldPath;
   }
 
   const result = next(action);
   const state = store.getState();
-  const currentProjectId = state.projects?.currentProjectId || state.document?.currentProjectId;
+  const currentProjectId = state.projects?.currentProjectId;
 
-  // File mutations
+  // File persistence
   if (
     type === 'editor/updateCellContent' ||
     type === 'editor/updateCellTitle' ||
@@ -23,19 +23,11 @@ export const persistenceMiddleware: Middleware = store => next => action => {
     type === 'editor/moveCell' ||
     type === 'editor/addFile' ||
     type === 'editor/addBinaryFile' ||
-    type === 'editor/addTextFileWithContent' ||
-    type === 'document/updateCellContent' ||
-    type === 'document/updateCellTitle' ||
-    type === 'document/addCell' ||
-    type === 'document/deleteCell' ||
-    type === 'document/moveCell' ||
-    type === 'document/addFile' ||
-    type === 'document/addBinaryFile' ||
-    type === 'document/addTextFileWithContent'
+    type === 'editor/addTextFileWithContent'
   ) {
     if (currentProjectId) {
-      const targetPath = (action as any).payload?.path || state.editor?.activeFilePath || state.document?.activeFilePath;
-      const fileToSave = (state.editor?.files || state.document?.files)?.[targetPath];
+      const targetPath = (action as any).payload?.path || state.editor?.activeFilePath;
+      const fileToSave = state.editor?.files?.[targetPath];
       if (fileToSave) {
         fileRepository.saveFile({
           id: `${currentProjectId}:${targetPath}`,
@@ -48,11 +40,11 @@ export const persistenceMiddleware: Middleware = store => next => action => {
         }).catch(err => console.error('Persistence failed for file:', err));
       }
     }
-  } else if (type === 'editor/renameFile' || type === 'document/renameFile') {
+  } else if (type === 'editor/renameFile') {
     const { newPath } = (action as any).payload;
     if (currentProjectId && oldRenamedPath) {
       fileRepository.deleteFile(currentProjectId, oldRenamedPath).catch(console.error);
-      const fileToSave = (state.editor?.files || state.document?.files)?.[newPath];
+      const fileToSave = state.editor?.files?.[newPath];
       if (fileToSave) {
         fileRepository.saveFile({
           id: `${currentProjectId}:${newPath}`,
@@ -65,26 +57,26 @@ export const persistenceMiddleware: Middleware = store => next => action => {
         }).catch(console.error);
       }
     }
-  } else if (type === 'editor/deleteFile' || type === 'document/deleteFile') {
+  } else if (type === 'editor/deleteFile') {
     const deletedPath = (action as any).payload;
     if (currentProjectId && deletedPath) {
       fileRepository.deleteFile(currentProjectId, deletedPath).catch(console.error);
     }
   }
 
-  // Project mutations
-  else if (type === 'projects/addProject' || type === 'document/addProject') {
+  // Project persistence
+  else if (type === 'projects/addProject') {
     const project = (action as any).payload;
     if (project) {
       projectRepository.save(project).catch(console.error);
     }
-  } else if (type === 'projects/updateProjectName' || type === 'document/updateProjectName') {
+  } else if (type === 'projects/updateProjectName') {
     const { id } = (action as any).payload;
-    const project = (state.projects?.projects || state.document?.projects)?.find((p: any) => p.id === id);
+    const project = state.projects?.projects?.find((p: any) => p.id === id);
     if (project) {
       projectRepository.save(project).catch(console.error);
     }
-  } else if (type === 'projects/deleteProject' || type === 'document/deleteProject') {
+  } else if (type === 'projects/deleteProject') {
     const projectId = (action as any).payload;
     if (projectId) {
       projectRepository.delete(projectId).catch(console.error);

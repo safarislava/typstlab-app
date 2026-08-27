@@ -1,8 +1,6 @@
-import { createSlice } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { User, ScreenType } from '../../core/types';
-import { tokenStorage } from '../../services';
-import { httpClient } from '../../services';
+import { tokenStorage, httpClient } from '../../services';
 
 interface AuthState {
   currentUser: User | null;
@@ -29,18 +27,12 @@ export const authSlice = createSlice({
       state.currentUser = action.payload;
       state.screen = 'dashboard';
       tokenStorage.setStoredUser(action.payload);
-      if (typeof window !== 'undefined') {
-        window.location.hash = '#/';
-      }
     },
     logoutUser(state) {
       state.currentUser = null;
+      state.screen = 'login';
       tokenStorage.clear();
       httpClient.setToken(null);
-      state.screen = 'login';
-      if (typeof window !== 'undefined') {
-        window.location.hash = '#/login';
-      }
     },
     setScreen(state, action: PayloadAction<ScreenType>) {
       state.screen = action.payload;

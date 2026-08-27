@@ -492,7 +492,7 @@ export const WordRibbon: React.FC = () => {
                           const rowNum = rIdx + 1;
                           return (
                             <div key={rowNum} className="table-grid-row">
-                              {Array.from({ length: GRID_SIZE }).map((_, cIdx) => {
+                              {Array.from({ length: GRID_SIZE }).map((_col, cIdx) => {
                                 const colNum = cIdx + 1;
                                 const isActive = rowNum <= hoveredGrid.rows && colNum <= hoveredGrid.cols;
                                 return (

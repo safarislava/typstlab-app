@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch } from '../store';
 import { moveCell, deleteCell } from '../store/documentSlice';
 import { ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import { CellEditor } from './CellEditor';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store';
 import { addCell, setActiveCellId } from '../store/documentSlice';
 import { CellContainer } from './CellContainer';
 import { Plus } from 'lucide-react';

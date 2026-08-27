@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../store';
 import { addFile, deleteFile, renameFile, setActiveFilePath, addBinaryFile, addTextFileWithContent } from '../../store/documentSlice';
 import { Plus } from 'lucide-react';
 import { FileCreateInput } from './files/FileCreateInput';

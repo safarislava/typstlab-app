@@ -3,7 +3,8 @@ import {
   filesApi,
   encodeCellsToYjsDelta, 
   uint8ArrayToBase64, 
-  yjsDocManager 
+  yjsDocManager,
+  syncProjectWithServer
 } from '../../services';
 
 const fileSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -29,10 +30,17 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
   const state = store.getState();
   const connectionStatus = state.network?.connectionStatus;
   const currentProjectId = state.projects?.currentProjectId;
+  const currentUser = state.auth?.currentUser || undefined;
 
   if (connectionStatus !== 'connected' || !currentProjectId) {
     return result;
   }
+
+  // Helper to trigger project sync fallback on client error (like 404 on changes, mismatch, etc.)
+  const handleClientSyncFallback = (reason: string, err: any) => {
+    console.warn(`[SyncMiddleware] ${reason}. Triggering project sync fallback.`, err);
+    void syncProjectWithServer(currentProjectId, currentUser);
+  };
 
   // Handle Creations & File Adds
   if (type === 'editor/addFile' || type === 'editor/addTextFileWithContent') {
@@ -57,7 +65,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
             }
           }
         })
-        .catch(err => console.error('Failed to create typst file on server:', err));
+        .catch(err => {
+          handleClientSyncFallback(`Failed to create typst file ${targetPath}`, err);
+        });
     }
   } else if (type === 'editor/addBinaryFile') {
     const { path, binaryData } = (action as any).payload;
@@ -69,7 +79,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
       name: path,
       type: 'binary',
       content: base64Content
-    }).catch(err => console.error('Failed to upload binary file to server:', err));
+    }).catch(err => {
+      handleClientSyncFallback(`Failed to upload binary file ${path}`, err);
+    });
   } else if (
     type === 'editor/updateCellContent' ||
     type === 'editor/updateCellTitle' ||
@@ -101,8 +113,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
               yjsDocManager.setServerState(fileUuid, sendRes.state);
             }
           }
-        } catch (err) {
-          console.error('Failed to sync debounced file changes to server:', err);
+        } catch (err: any) {
+          // On 404 (file missing on server) or other client errors, trigger full project sync
+          handleClientSyncFallback(`Failed to sync changes for ${targetPath} (${fileUuid})`, err);
         }
       }, SYNC_DEBOUNCE_MS);
 
@@ -114,7 +127,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
     if (file) {
       const fileUuid = file.fileUuid || crypto.randomUUID();
       if (renamedFileUuid) {
-        filesApi.deleteFile(currentProjectId, renamedFileUuid).catch(console.error);
+        filesApi.deleteFile(currentProjectId, renamedFileUuid).catch(err => {
+          handleClientSyncFallback(`Failed to delete old file during rename ${renamedFileUuid}`, err);
+        });
       }
       if (file.isBinary && file.binaryData) {
         const base64Content = uint8ArrayToBase64(file.binaryData);
@@ -123,7 +138,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
           name: newPath,
           type: 'binary',
           content: base64Content
-        }).catch(console.error);
+        }).catch(err => {
+          handleClientSyncFallback(`Failed to upload renamed binary file ${newPath}`, err);
+        });
       } else {
         filesApi.createFileWithId(currentProjectId, {
           id: fileUuid,
@@ -132,14 +149,20 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
         })
           .then(async () => {
             const delta = encodeCellsToYjsDelta(fileUuid, file.cells || []);
-            await filesApi.sendTypstFileChanges(fileUuid, delta);
+            if (delta) {
+              await filesApi.sendTypstFileChanges(fileUuid, delta);
+            }
           })
-          .catch(console.error);
+          .catch(err => {
+            handleClientSyncFallback(`Failed to recreate renamed typst file ${newPath}`, err);
+          });
       }
     }
   } else if (type === 'editor/deleteFile') {
     if (deletedFileUuid) {
-      filesApi.deleteFile(currentProjectId, deletedFileUuid).catch(console.error);
+      filesApi.deleteFile(currentProjectId, deletedFileUuid).catch(err => {
+        handleClientSyncFallback(`Failed to delete file ${deletedFileUuid}`, err);
+      });
     }
   }
 

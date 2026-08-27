@@ -1,11 +1,10 @@
 import React from 'react';
-import { useAppSelector, useAppDispatch } from '../store';
-import { addCell, setActiveCellId } from '../store/documentSlice';
+import { useAppSelector, useAppDispatch, addCell, setActiveCellId } from '../store';
 import { CellContainer } from './CellContainer';
 import { Plus } from 'lucide-react';
 
 export const CellList: React.FC = () => {
-  const { files, activeFilePath, activeCellId } = useAppSelector((state) => state.document);
+  const { files, activeFilePath, activeCellId } = useAppSelector((state) => state.editor);
   const activeFile = files[activeFilePath];
   const cells = activeFile && !activeFile.isBinary ? activeFile.cells : [];
   const dispatch = useAppDispatch();
@@ -68,4 +67,3 @@ export const CellList: React.FC = () => {
     </div>
   );
 };
-

@@ -1,17 +1,15 @@
 import React from 'react';
 import { ArrowLeft, LogOut } from 'lucide-react';
-import { useAppSelector, useAppDispatch } from '../../../store';
-import { logoutUser } from '../../../store';
-import { ConnectionIndicator } from '../../common/ConnectionIndicator';
-import { StatusBadge } from '../../common/StatusBadge';
+import { useAppSelector, useAppDispatch, logoutUser } from '../../../store';
+import { ConnectionIndicator, StatusBadge } from '../../common';
 import { ProjectTitleInput } from './ProjectTitleInput';
 import { LayoutToggleButtons } from './LayoutToggleButtons';
 import { ExportPdfButton } from './ExportPdfButton';
 
 export const EditorHeader: React.FC = () => {
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector(state => state.auth?.currentUser || state.document?.currentUser);
-  const connectionStatus = useAppSelector(state => state.network?.connectionStatus || state.document?.connectionStatus);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
 
   const handleBackToDashboard = () => {
     window.location.hash = '#/';

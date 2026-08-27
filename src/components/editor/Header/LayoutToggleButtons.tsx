@@ -1,11 +1,10 @@
 import React from 'react';
 import { Edit3, Columns, Eye } from 'lucide-react';
-import { useAppSelector, useAppDispatch } from '../../../store';
-import { setPreviewMode } from '../../../store';
+import { useAppSelector, useAppDispatch, setPreviewMode } from '../../../store';
 
 export const LayoutToggleButtons: React.FC = () => {
   const dispatch = useAppDispatch();
-  const previewMode = useAppSelector(state => state.editor?.previewMode || state.document?.previewMode);
+  const previewMode = useAppSelector(state => state.editor.previewMode);
 
   return (
     <div className="layout-toggles">

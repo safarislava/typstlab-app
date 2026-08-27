@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
-import { loginUser, setScreen } from '../store';
-import { projectRepository } from '../services';
-import { authApi } from '../services';
+import { useAppDispatch, useAppSelector, loginUser, setScreen } from '../store';
+import { projectRepository, authApi } from '../services';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus } from 'lucide-react';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const Register: React.FC = () => {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector((state) => state.network?.connectionStatus || state.document?.connectionStatus);
-  const currentProjectId = useAppSelector((state) => state.projects?.currentProjectId || state.document?.currentProjectId);
+  const connectionStatus = useAppSelector((state) => state.network.connectionStatus);
+  const currentProjectId = useAppSelector((state) => state.projects.currentProjectId);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../store';
-import { addFile, deleteFile, renameFile, setActiveFilePath, addBinaryFile, addTextFileWithContent } from '../../store/documentSlice';
+import { 
+  useAppDispatch, 
+  useAppSelector,
+  addFile, 
+  deleteFile, 
+  renameFile, 
+  setActiveFilePath, 
+  addBinaryFile, 
+  addTextFileWithContent 
+} from '../../store';
 import { Plus } from 'lucide-react';
 import { FileCreateInput } from './files/FileCreateInput';
 import { FileItem } from './files/FileItem';
@@ -12,7 +20,7 @@ interface FilesTabProps {
 
 export const FilesTab: React.FC<FilesTabProps> = ({ onOutlineClick }) => {
   const dispatch = useAppDispatch();
-  const { files, activeFilePath, activeCellId } = useAppSelector((state) => state.document);
+  const { files, activeFilePath, activeCellId } = useAppSelector((state) => state.editor);
   const [isCreating, setIsCreating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 

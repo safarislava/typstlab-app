@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Cell } from '../../../store/documentSlice';
+import type { Cell } from '../../../core/types';
 
 interface FileCellsListProps {
   cells: Cell[];

@@ -1,17 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
-import { setScreen } from '../store';
-import { setCurrentProjectId } from '../store';
+import { useAppDispatch, useAppSelector, setScreen, setCurrentProjectId } from '../store';
 import type { ScreenType } from '../core/types';
 
 export function useHashRouter() {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector(
-    state => state.network?.connectionStatus || state.document?.connectionStatus
-  );
-  const currentUser = useAppSelector(
-    state => state.auth?.currentUser || state.document?.currentUser
-  );
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
 
   const [currentHash, setCurrentHash] = useState(() =>
     typeof window !== 'undefined' ? window.location.hash : ''

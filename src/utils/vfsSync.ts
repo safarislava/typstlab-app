@@ -1,1 +1,1 @@
-export { syncFilesToVfs } from '../services/compiler/vfsBridge';
+export { syncFilesToVfs } from '../services';

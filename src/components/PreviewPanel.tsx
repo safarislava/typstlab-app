@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useAppSelector, useAppDispatch } from '../store';
-import { setIsCompiling, setCompilerError } from '../store/documentSlice';
+import { useAppSelector, useAppDispatch, setIsCompiling, setCompilerError } from '../store';
 import { RefreshCw, AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Hand, Maximize2 } from 'lucide-react';
 import { $typst } from '@myriaddreamin/typst.ts';
-import { globalCompilerQueue } from '../lsp/compilerQueue';
-import { syncFilesToVfs } from '../services';
+import { compilerQueue, syncFilesToVfs } from '../services';
 
 interface PageData {
   svgHtml: string;
@@ -41,7 +39,7 @@ function splitPages(svgHtml: string): PageData[] {
   }
 }
 
-function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
+function performSplit(rootSvg: Element, _originalHtml: string): PageData[] {
   const styleEl = rootSvg.querySelector('style');
   const defsEl = rootSvg.querySelector('defs');
 
@@ -63,30 +61,37 @@ function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
         height = parts[3];
       }
     }
-    return [{ svgHtml: originalHtml, width, height }];
+    const serializer = new XMLSerializer();
+    return [{
+      svgHtml: serializer.serializeToString(rootSvg),
+      width,
+      height
+    }];
   }
 
   const pageSvgs: PageData[] = [];
 
   pages.forEach((pageGroup) => {
-    const width = parseFloat(pageGroup.getAttribute('data-page-width') || '595');
-    const height = parseFloat(pageGroup.getAttribute('data-page-height') || '842');
+    const clonedGroup = pageGroup.cloneNode(true) as SVGGElement;
+    const transform = clonedGroup.getAttribute('transform') || '';
+    const match = transform.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+    
+    let width = 595;
+    let height = 842;
 
-    const transform = pageGroup.getAttribute('transform') || '';
-    let translateY = 0;
-    let translateX = 0;
-    const translateMatch = transform.match(/translate\(\s*([-\d.]+)\s*[,\s]\s*([-\d.]+)\s*\)/);
-    if (translateMatch) {
-      translateX = parseFloat(translateMatch[1]);
-      translateY = parseFloat(translateMatch[2]);
+    if (match) {
+      clonedGroup.removeAttribute('transform');
     }
 
-    const clonedGroup = pageGroup.cloneNode(true) as SVGElement;
+    const dataWidth = pageGroup.getAttribute('data-page-width');
+    const dataHeight = pageGroup.getAttribute('data-page-height');
+    if (dataWidth && dataHeight) {
+      width = parseFloat(dataWidth);
+      height = parseFloat(dataHeight);
+    }
 
     const newSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    newSvg.setAttribute('viewBox', `${translateX} ${translateY} ${width} ${height}`);
-    newSvg.setAttribute('width', '100%');
-    newSvg.setAttribute('height', '100%');
+    newSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     newSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     newSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
     newSvg.setAttribute('class', 'typst-doc');
@@ -112,9 +117,8 @@ function performSplit(rootSvg: Element, originalHtml: string): PageData[] {
 
 export const PreviewPanel: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { files, activeFilePath, isCompiling, compilerReady, compilerError } = useAppSelector(
-    (state) => state.document
-  );
+  const { files, activeFilePath } = useAppSelector((state) => state.editor);
+  const { isCompiling, compilerReady, compilerError } = useAppSelector((state) => state.compiler);
   
   const [renderedPages, setRenderedPages] = useState<PageData[]>([]);
   const [zoom, setZoom] = useState<number>(1.0);
@@ -169,168 +173,176 @@ export const PreviewPanel: React.FC = () => {
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
-      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
       setZoom((z) => Math.min(3.0, Math.max(0.3, parseFloat((z + delta).toFixed(2)))));
     }
   };
 
-  const isPanningActive = isPanToolActive || isSpacePressed;
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && isPanningActive)) {
-      if (!containerRef.current) return;
-      e.preventDefault();
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanToolActive || isSpacePressed || e.button === 1) { // Left click in Pan mode or middle-click
       setIsDraggingPan(true);
-      panStartRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        scrollLeft: containerRef.current.scrollLeft,
-        scrollTop: containerRef.current.scrollTop
-      };
+      if (containerRef.current) {
+        panStartRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          scrollLeft: containerRef.current.scrollLeft,
+          scrollTop: containerRef.current.scrollTop
+        };
+      }
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDraggingPan || !containerRef.current) return;
     e.preventDefault();
-    const deltaX = e.clientX - panStartRef.current.startX;
-    const deltaY = e.clientY - panStartRef.current.startY;
-    containerRef.current.scrollLeft = panStartRef.current.scrollLeft - deltaX;
-    containerRef.current.scrollTop = panStartRef.current.scrollTop - deltaY;
+    const dx = e.clientX - panStartRef.current.startX;
+    const dy = e.clientY - panStartRef.current.startY;
+    containerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+    containerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
   };
 
   const handleMouseUp = () => {
     setIsDraggingPan(false);
   };
 
-  // Debounced Compilation Loop
   useEffect(() => {
     if (!compilerReady) return;
 
-    if (!activeFilePath || !files[activeFilePath] || files[activeFilePath].isBinary) {
-      setRenderedPages([]);
-      dispatch(setCompilerError(null));
-      return;
-    }
+    let isSubscribed = true;
 
-    const compileTimer = setTimeout(async () => {
+    // Use global compiler queue to serialize all compilations cleanly without race conditions
+    void compilerQueue.run(async () => {
+      if (!isSubscribed) return;
+
       dispatch(setIsCompiling(true));
 
       try {
         await syncFilesToVfs(files);
 
-        const result = await globalCompilerQueue.run(async () => {
-          return await $typst.svg({ mainFilePath: `/${activeFilePath}` });
+        const activeFile = files[activeFilePath];
+        let mainPath = '/main.typ';
+
+        if (activeFile && !activeFile.isBinary) {
+          mainPath = `/${activeFile.path}`;
+        } else {
+          const firstTypst = Object.values(files).find(f => !f.isBinary);
+          if (firstTypst) {
+            mainPath = `/${firstTypst.path}`;
+          }
+        }
+
+        const svg = await $typst.svg({
+          mainFilePath: mainPath,
         });
 
-        if (result !== null) {
-          const pages = splitPages(result);
+        if (isSubscribed) {
+          const pages = splitPages(svg);
           setRenderedPages(pages);
           dispatch(setCompilerError(null));
         }
       } catch (err: any) {
-        console.error('Typst Compilation Error:', err);
-        dispatch(setCompilerError(err?.toString() || 'An unknown compilation error occurred'));
+        if (isSubscribed) {
+          let errorMsg = 'Compilation failed';
+          if (typeof err === 'string') {
+            errorMsg = err;
+          } else if (err?.message) {
+            errorMsg = err.message;
+          }
+          dispatch(setCompilerError(errorMsg));
+        }
       } finally {
-        dispatch(setIsCompiling(false));
+        if (isSubscribed) {
+          dispatch(setIsCompiling(false));
+        }
       }
-    }, 500);
+    });
 
-    return () => clearTimeout(compileTimer);
+    return () => {
+      isSubscribed = false;
+    };
   }, [files, activeFilePath, compilerReady, dispatch]);
 
-  // Direct physical layout width calculation (prevents transform-origin clipping)
-  const basePageWidth = renderedPages[0]?.width || 595;
-  const scaledWidth = Math.round(basePageWidth * zoom);
+  const isPanningCursor = isPanToolActive || isSpacePressed;
 
   return (
-    <section className="preview-panel">
-      {/* Top Floating Zoom Controls Bar */}
+    <div className="preview-panel">
+      {/* Top Floating Zoom Controls */}
       <div className="preview-toolbar">
         <div className="zoom-controls">
           <button 
             className={`zoom-btn ${isPanToolActive ? 'active' : ''}`}
-            onClick={() => setIsPanToolActive(!isPanToolActive)}
-            title="Pan Hand Tool (Hold Space or drag)"
+            onClick={() => setIsPanToolActive(!isPanToolActive)} 
+            title={isPanToolActive ? "Pan Mode (Active) [Hold Space]" : "Hand / Pan Tool [Hold Space]"}
           >
             <Hand size={14} />
           </button>
-
           <div className="toolbar-divider" />
-
-          <button className="zoom-btn" onClick={handleZoomOut} title="Zoom Out (-15%)" disabled={zoom <= 0.3}>
+          <button className="zoom-btn" onClick={handleZoomOut} title="Zoom Out (Ctrl -)">
             <ZoomOut size={14} />
           </button>
-
           <select 
-            className="zoom-select"
-            value={zoom.toFixed(2)}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
-            title="Zoom level"
+            className="zoom-select" 
+            value={Math.round(zoom * 100)} 
+            onChange={(e) => setZoom(parseInt(e.target.value, 10) / 100)}
           >
-            <option value="0.30">30%</option>
-            <option value="0.50">50%</option>
-            <option value="0.75">75%</option>
-            <option value="1.00">100%</option>
-            <option value="1.25">125%</option>
-            <option value="1.50">150%</option>
-            <option value="2.00">200%</option>
-            <option value="2.50">250%</option>
-            <option value="3.00">300%</option>
+            <option value="50">50%</option>
+            <option value="75">75%</option>
+            <option value="100">100%</option>
+            <option value="125">125%</option>
+            <option value="150">150%</option>
+            <option value="200">200%</option>
           </select>
-
-          <button className="zoom-btn" onClick={handleZoomIn} title="Zoom In (+15%)" disabled={zoom >= 3.0}>
+          <button className="zoom-btn" onClick={handleZoomIn} title="Zoom In (Ctrl +)">
             <ZoomIn size={14} />
           </button>
-
-          <button className="zoom-btn" onClick={handleFitWidth} title="Fit Width">
-            <Maximize2 size={14} />
+          <div className="toolbar-divider" />
+          <button className="zoom-btn" onClick={handleFitWidth} title="Fit to Width">
+            <Maximize2 size={13} />
           </button>
-
-          <button className="zoom-btn reset-btn" onClick={handleResetZoom} title="Reset Zoom (100%)">
-            <RotateCcw size={14} />
+          <button className="zoom-btn" onClick={handleResetZoom} title="Reset 100%">
+            <RotateCcw size={13} />
           </button>
         </div>
       </div>
 
       <div 
         ref={containerRef}
-        className={`preview-container ${isPanningActive ? 'is-pan-active' : ''} ${isDraggingPan ? 'is-dragging-pan' : ''}`}
+        className={`preview-container ${isPanningCursor ? 'is-pan-active' : ''} ${isDraggingPan ? 'is-dragging-pan' : ''}`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div className="preview-canvas-stage">
-          {!compilerReady && (
-            <div className="preview-loader">
-              <RefreshCw className="spinner" />
-              <span>Loading Typst WebAssembly compiler...</span>
+        <div className="preview-wrapper">
+          {isCompiling && (
+            <div className="compiling-toast">
+              <RefreshCw size={12} className="spinner-small" />
+              <span>Compiling...</span>
             </div>
           )}
 
-          {compilerReady && (
+          {!compilerReady ? (
+            <div className="preview-placeholder">
+              <div className="loading-spinner">
+                <RefreshCw size={18} className="spinner-small" />
+              </div>
+              <p>Initializing Typst WebAssembly Engine...</p>
+            </div>
+          ) : (
             <div 
-              className="preview-output-wrapper"
+              className="preview-content-flow"
               style={{
-                width: `${scaledWidth}px`,
-                maxWidth: 'none',
-                transition: isDraggingPan ? 'none' : 'width 0.15s ease-out'
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top center',
+                transition: isDraggingPan ? 'none' : 'transform 0.15s ease-out'
               }}
             >
-              {isCompiling && (
-                <div className="compiling-toast">
-                  <RefreshCw className="spinner-small" />
-                  <span>Recompiling...</span>
-                </div>
-              )}
-
               {compilerError && (
-                <div className="compiler-error-box">
+                <div className="preview-error-box">
                   <div className="error-header">
-                    <AlertTriangle size={18} />
-                    <h4>Compilation Error</h4>
+                    <AlertTriangle size={18} className="error-icon" />
+                    <h3>Typst Compilation Error</h3>
                   </div>
                   <pre className="error-message">{compilerError}</pre>
                 </div>
@@ -358,6 +370,6 @@ export const PreviewPanel: React.FC = () => {
           )}
         </div>
       </div>
-    </section>
+    </div>
   );
 };

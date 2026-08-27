@@ -1,17 +1,11 @@
 import { useEffect, useCallback, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
-import { setConnectionStatus } from '../store';
-import { logoutUser } from '../store';
+import { useAppDispatch, useAppSelector, setConnectionStatus, logoutUser } from '../store';
 import { authApi, httpClient } from '../services';
 
 export function useNetworkStatus() {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector(
-    state => state.network?.connectionStatus || state.document?.connectionStatus
-  );
-  const currentUser = useAppSelector(
-    state => state.auth?.currentUser || state.document?.currentUser
-  );
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
   const [isChecking, setIsChecking] = useState(false);
 
   // Reconnection logic (health check + token validation)
@@ -34,14 +28,7 @@ export function useNetworkStatus() {
         return false;
       }
 
-      // If server is healthy, verify session
-      const token = httpClient.getToken();
-      if (token) {
-        dispatch(setConnectionStatus('connected'));
-      } else {
-        dispatch(setConnectionStatus('connected'));
-      }
-
+      dispatch(setConnectionStatus('connected'));
       setIsChecking(false);
       return true;
     } catch {

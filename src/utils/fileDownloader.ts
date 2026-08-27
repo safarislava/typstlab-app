@@ -1,4 +1,4 @@
-import type { TypstFile } from '../store/documentSlice';
+import type { TypstFile } from '../core/types';
 import { serializeCellsToXml } from './xmlSerializer';
 
 /**

@@ -4,7 +4,7 @@ import { useAppSelector } from '../../store';
 
 export const StatusBadge: React.FC = () => {
   const { isCompiling, compilerReady, compilerError } = useAppSelector(
-    state => state.compiler || state.document
+    state => state.compiler
   );
 
   if (isCompiling) {

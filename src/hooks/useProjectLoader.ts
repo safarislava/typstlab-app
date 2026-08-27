@@ -1,19 +1,12 @@
 import { useState, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
-import { initializeProject } from '../store';
-import { setCurrentProjectId } from '../store';
-import { projectRepository, fileRepository } from '../services';
-import { syncProjectWithServer } from '../services';
+import { useAppDispatch, useAppSelector, initializeProject, setCurrentProjectId } from '../store';
+import { projectRepository, fileRepository, syncProjectWithServer } from '../services';
 import type { TypstFile } from '../core/types';
 
 export function useProjectLoader() {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector(
-    state => state.network?.connectionStatus || state.document?.connectionStatus
-  );
-  const currentUser = useAppSelector(
-    state => state.auth?.currentUser || state.document?.currentUser
-  );
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +42,7 @@ export function useProjectLoader() {
 
         // 3. Load files from IndexedDB into Redux
         const dbFiles = await fileRepository.getFilesForProject(projectId);
-        const reduxFiles: TypstFile[] = dbFiles.map(f => {
+        let reduxFiles: TypstFile[] = dbFiles.map(f => {
           if (f.isBinary) {
             return {
               path: f.path,
@@ -72,6 +65,29 @@ export function useProjectLoader() {
             };
           }
         });
+
+        // If project has no files yet, create default main.typxml
+        if (reduxFiles.length === 0) {
+          const defaultCell = { 
+            id: crypto.randomUUID(), 
+            content: '#set page(paper: "a4")\n\n= Welcome to TypstLab\n\nStart writing your document in Typst markup here.' 
+          };
+          const defaultFile: TypstFile = {
+            path: 'main.typxml',
+            isBinary: false,
+            cells: [defaultCell],
+            fileUuid: crypto.randomUUID()
+          };
+          reduxFiles = [defaultFile];
+          await fileRepository.saveFile({
+            id: `${projectId}:main.typxml`,
+            projectId,
+            path: 'main.typxml',
+            isBinary: false,
+            cells: [defaultCell],
+            fileUuid: defaultFile.fileUuid
+          });
+        }
 
         dispatch(initializeProject(reduxFiles));
         dispatch(setCurrentProjectId(projectId));

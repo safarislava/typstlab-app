@@ -2,9 +2,9 @@ import {
   initDB, 
   projectRepository, 
   fileRepository, 
-  userRepository 
+  userRepository,
+  hashPassword
 } from '../services';
-import { hashPassword } from '../services';
 
 export type { TypstProject, DBTypstFile, DBUser } from '../core/types';
 

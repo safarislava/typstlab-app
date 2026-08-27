@@ -1,9 +1,7 @@
-import { useTypstCompiler } from './hooks';
-import { useNetworkStatus } from './hooks';
-import { useHashRouter } from './hooks';
+import { useTypstCompiler, useNetworkStatus, useHashRouter } from './hooks';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
-import { DashboardView } from './components/dashboard/DashboardView';
+import { DashboardView } from './components/dashboard';
 import { EditorLayout } from './components/editor/EditorLayout';
 
 export function App() {

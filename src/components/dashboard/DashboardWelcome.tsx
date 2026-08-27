@@ -1,12 +1,11 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
-import { useAppSelector, useAppDispatch } from '../../store';
-import { logoutUser } from '../../store';
+import { useAppSelector, useAppDispatch, logoutUser } from '../../store';
 
 export const DashboardWelcome: React.FC = () => {
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector(state => state.auth?.currentUser || state.document?.currentUser);
-  const connectionStatus = useAppSelector(state => state.network?.connectionStatus || state.document?.connectionStatus);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
+  const connectionStatus = useAppSelector(state => state.network.connectionStatus);
 
   return (
     <section className="dashboard-welcome">

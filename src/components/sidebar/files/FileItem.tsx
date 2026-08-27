@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FileText, FileImage, Trash2, Edit, Download } from 'lucide-react';
-import type { TypstFile } from '../../../store/documentSlice';
+import type { TypstFile } from '../../../core/types';
 import { downloadTypstFile } from '../../../utils/fileDownloader';
 
 interface FileItemProps {

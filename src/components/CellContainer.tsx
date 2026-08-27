@@ -1,9 +1,8 @@
 import React from 'react';
-import { useAppDispatch } from '../store';
-import { moveCell, deleteCell } from '../store/documentSlice';
+import { useAppDispatch, moveCell, deleteCell } from '../store';
 import { ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import { CellEditor } from './CellEditor';
-import type { Cell } from '../store/documentSlice';
+import type { Cell } from '../core/types';
 
 interface CellContainerProps {
   cell: Cell;
@@ -56,4 +55,3 @@ export const CellContainer: React.FC<CellContainerProps> = ({ cell, index, isAct
     </div>
   );
 };
-

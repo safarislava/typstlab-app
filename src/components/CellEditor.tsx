@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
-import { useAppDispatch, useAppSelector } from '../store';
-import { updateCellContent, updateCellTitle } from '../store/documentSlice';
+import { useAppDispatch, useAppSelector, updateCellContent, updateCellTitle } from '../store';
 import { useLspExtensions } from '../lsp/lspManager';
 import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';
 import { globalEditorRegistry } from '../lsp/editorRegistry';
@@ -25,9 +24,9 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   index
 }) => {
   const dispatch = useAppDispatch();
-  const compilerError = useAppSelector((state) => state.document.compilerError);
-  const files = useAppSelector((state) => state.document.files);
-  const activeFilePath = useAppSelector((state) => state.document.activeFilePath);
+  const compilerError = useAppSelector((state) => state.compiler.compilerError);
+  const files = useAppSelector((state) => state.editor.files);
+  const activeFilePath = useAppSelector((state) => state.editor.activeFilePath);
   const activeFile = files[activeFilePath];
   const cells = activeFile && !activeFile.isBinary ? activeFile.cells : [];
 
@@ -57,7 +56,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
     };
   }, [id]);
 
-  // Retrieve appropriate LSP extensions (automatically swaps between online WebSocket and offline fallback)
+  // Retrieve appropriate LSP extensions
   const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
   return (
@@ -70,34 +69,38 @@ export const CellEditor: React.FC<CellEditorProps> = ({
           className="cell-title-input"
           value={title || ''}
           onChange={handleTitleChange}
-          onFocus={handleFocus}
-          placeholder="Unnamed Block"
-          spellCheck={false}
+          placeholder="Section Title / Cell Note..."
+          onClick={(e) => e.stopPropagation()}
         />
       </div>
       
-      <div className="editor-wrapper" style={{ border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+      <div className="codemirror-wrapper">
         <CodeMirror
           value={content}
           height="auto"
           theme={intellijDarkTheme}
-          extensions={[typstHighlightLanguage, EditorView.lineWrapping, ...lspExtensions]}
+          extensions={[
+            typstHighlightLanguage,
+            EditorView.lineWrapping,
+            ...lspExtensions
+          ]}
           onChange={handleCodeChange}
-          onFocus={handleFocus}
-          onCreateEditor={(view) => {
-            globalEditorRegistry.register(id, view);
-            if (isActive) {
-              globalEditorRegistry.setActiveId(id);
-            }
-          }}
           basicSetup={{
             lineNumbers: true,
-            foldGutter: false,
-            highlightActiveLine: true,
-            autocompletion: true,
+            foldGutter: true,
+            dropCursor: true,
+            allowMultipleSelections: false,
+            indentOnInput: true,
+            bracketMatching: true,
+            closeBrackets: true,
+            autocompletion: false,
+            highlightActiveLine: isActive,
+            highlightSelectionMatches: true,
             tabSize: 2,
           }}
-          style={{ fontSize: '13px', fontFamily: 'Fira Code, monospace' }}
+          onCreateEditor={(view) => {
+            globalEditorRegistry.register(id, view);
+          }}
         />
       </div>
     </div>

@@ -66,48 +66,29 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   };
 
   return (
-    <div className="project-card" onClick={() => onOpen(project.id)}>
+    <div 
+      className={`project-card ${isConfirmingDelete ? 'confirm-delete-state' : ''}`} 
+      onClick={() => !isConfirmingDelete && onOpen(project.id)}
+    >
       <div className="project-card-header">
-        <div className="project-icon">
-          <Folder size={20} />
+        <div className="project-icon-wrapper">
+          <Folder size={22} />
         </div>
         <div className="project-card-actions" onClick={e => e.stopPropagation()}>
-          {isConfirmingDelete ? (
-            <div className="delete-confirm-actions">
-              <span className="confirm-text">Удалить?</span>
-              <button
-                className="btn-action confirm-delete"
-                onClick={handleConfirmDelete}
-                title="Подтвердить удаление"
-              >
-                <Check size={14} />
-              </button>
-              <button
-                className="btn-action cancel-delete"
-                onClick={handleCancelDelete}
-                title="Отмена"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <button
-                className="btn-action"
-                onClick={handleStartRename}
-                title="Переименовать"
-              >
-                <Edit2 size={15} />
-              </button>
-              <button
-                className="btn-action danger"
-                onClick={handleStartDelete}
-                title="Удалить проект"
-              >
-                <Trash2 size={15} />
-              </button>
-            </>
-          )}
+          <button
+            className="card-action-btn"
+            onClick={handleStartRename}
+            title="Переименовать"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            className="card-action-btn delete-btn"
+            onClick={handleStartDelete}
+            title="Удалить проект"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       </div>
 
@@ -121,35 +102,49 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               autoFocus
               className="rename-input"
             />
-            <button type="submit" className="btn-rename-save" title="Сохранить">
-              <Check size={14} />
-            </button>
-            <button
-              type="button"
-              className="btn-rename-cancel"
-              onClick={handleCancelRename}
-              title="Отмена"
-            >
-              <X size={14} />
-            </button>
+            <div className="rename-actions">
+              <button type="submit" title="Сохранить">
+                <Check size={14} />
+              </button>
+              <button type="button" onClick={handleCancelRename} title="Отмена">
+                <X size={14} />
+              </button>
+            </div>
           </form>
         ) : (
-          <h3 className="project-name" title={project.name}>
-            {project.name}
-          </h3>
+          <>
+            <h3 className="project-name" title={project.name}>
+              {project.name}
+            </h3>
+            <p className="project-desc">Typst Document Project</p>
+          </>
         )}
       </div>
 
       <div className="project-card-footer">
-        <div className="project-meta">
+        <div className="project-date">
           <Calendar size={13} />
           <span>{formatDate(project.updatedAt || project.createdAt)}</span>
         </div>
-        <div className="project-open-hint">
+        <div className="open-indicator">
           <span>Open</span>
           <ArrowRight size={13} />
         </div>
       </div>
+
+      {isConfirmingDelete && (
+        <div className="delete-overlay" onClick={e => e.stopPropagation()}>
+          <p>Удалить проект «{project.name}»?</p>
+          <div className="overlay-actions">
+            <button className="btn-confirm-delete" onClick={handleConfirmDelete}>
+              Удалить
+            </button>
+            <button className="btn-cancel" onClick={handleCancelDelete}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

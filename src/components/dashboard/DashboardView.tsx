@@ -96,6 +96,7 @@ export const DashboardView: React.FC = () => {
         <DashboardWelcome />
         <ProjectSearchBar
           searchQuery={searchQuery}
+          totalProjects={projects.length}
           onSearchChange={setSearchQuery}
         />
         <ProjectGrid

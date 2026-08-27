@@ -27,13 +27,15 @@ export const ProjectGrid: React.FC<ProjectGridProps> = ({
   return (
     <div className="projects-grid">
       {/* Create New Project Card */}
-      <button className="project-card create-card" onClick={onOpenCreateModal}>
-        <div className="create-card-icon">
-          <Plus size={28} />
+      <div className="project-card create-card" onClick={onOpenCreateModal}>
+        <div className="create-card-content">
+          <div className="plus-circle">
+            <Plus size={24} />
+          </div>
+          <h3>Create New Project</h3>
+          <p>Start writing Typst from scratch</p>
         </div>
-        <span className="create-card-title">Create New Project</span>
-        <span className="create-card-desc">Start writing Typst from scratch</span>
-      </button>
+      </div>
 
       {/* Existing Project Cards */}
       {filteredProjects.map(project => (
@@ -48,8 +50,10 @@ export const ProjectGrid: React.FC<ProjectGridProps> = ({
 
       {/* Empty State when search has no results */}
       {filteredProjects.length === 0 && searchQuery && (
-        <div className="empty-search-state">
-          <BookOpen size={48} />
+        <div className="dashboard-empty-state">
+          <div className="empty-icon">
+            <BookOpen size={40} />
+          </div>
           <h3>No projects found</h3>
           <p>No project matches your search query "{searchQuery}"</p>
         </div>

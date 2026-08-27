@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
-import { loginUser, setScreen } from '../store/documentSlice';
-import { migrateLegacyProjectsToUser } from '../store/db';
-import { api } from '../utils/api';
+import { loginUser, setScreen } from '../store';
+import { projectRepository } from '../services';
+import { authApi } from '../services';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader, UserPlus } from 'lucide-react';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const Register: React.FC = () => {
   const dispatch = useAppDispatch();
-  const connectionStatus = useAppSelector((state) => state.document.connectionStatus);
-  const currentProjectId = useAppSelector((state) => state.document.currentProjectId);
+  const connectionStatus = useAppSelector((state) => state.network?.connectionStatus || state.document?.connectionStatus);
+  const currentProjectId = useAppSelector((state) => state.projects?.currentProjectId || state.document?.currentProjectId);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +22,7 @@ export const Register: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (connectionStatus === 'offline') {
       dispatch(setScreen(currentProjectId ? 'editor' : 'dashboard'));
       if (window.location.hash === '#/login' || window.location.hash === '#/register') {
@@ -31,8 +31,8 @@ export const Register: React.FC = () => {
     }
   }, [connectionStatus, dispatch, currentProjectId]);
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (submitEvent: React.SyntheticEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault();
     
     const cleanEmail = email.trim().toLowerCase();
 
@@ -68,11 +68,11 @@ export const Register: React.FC = () => {
     try {
       const usernameFromEmail = cleanEmail.split('@')[0] || 'user';
 
-      // 1. Register with Go backend
-      await api.register(cleanEmail, password.trim(), 'user');
+      // 1. Register with backend
+      await authApi.register(cleanEmail, password.trim(), 'user');
       
-      // 2. Log in with Go backend
-      await api.login(cleanEmail, password.trim());
+      // 2. Log in with backend
+      await authApi.login(cleanEmail, password.trim());
 
       const user = {
         username: usernameFromEmail,
@@ -81,7 +81,7 @@ export const Register: React.FC = () => {
       };
 
       // Migrate legacy projects to the new user automatically
-      await migrateLegacyProjectsToUser(user.username);
+      await projectRepository.migrateLegacyProjectsToUser(user.username);
 
       // Login user
       dispatch(loginUser(user));
@@ -137,7 +137,7 @@ export const Register: React.FC = () => {
                   type="email"
                   placeholder="email@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(inputEv) => setEmail(inputEv.target.value)}
                   disabled={isLoading}
                   autoComplete="email"
                   required
@@ -154,7 +154,7 @@ export const Register: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Минимум 6 символов"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(inputEv) => setPassword(inputEv.target.value)}
                   disabled={isLoading}
                   autoComplete="new-password"
                   required
@@ -180,7 +180,7 @@ export const Register: React.FC = () => {
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Повторите пароль"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(inputEv) => setConfirmPassword(inputEv.target.value)}
                   disabled={isLoading}
                   autoComplete="new-password"
                   required

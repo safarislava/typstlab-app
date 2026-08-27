@@ -28,8 +28,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Create New Project</h3>
-          <button className="modal-close-btn" onClick={onClose}>
+          <h2>Create New Project</h2>
+          <button className="close-modal" onClick={onClose} title="Закрыть">
             <X size={18} />
           </button>
         </div>
@@ -44,7 +44,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               value={projectName}
               onChange={e => setProjectName(e.target.value)}
               autoFocus
-              className="modal-input"
             />
           </div>
 
@@ -54,7 +53,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             </button>
             <button
               type="submit"
-              className="btn-create"
+              className="btn-submit-primary"
               disabled={!projectName.trim()}
             >
               <Plus size={16} />

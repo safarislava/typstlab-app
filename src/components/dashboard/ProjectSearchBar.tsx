@@ -3,11 +3,13 @@ import { Search, X } from 'lucide-react';
 
 interface ProjectSearchBarProps {
   searchQuery: string;
+  totalProjects: number;
   onSearchChange: (query: string) => void;
 }
 
 export const ProjectSearchBar: React.FC<ProjectSearchBarProps> = ({
   searchQuery,
+  totalProjects,
   onSearchChange
 }) => {
   return (
@@ -21,10 +23,14 @@ export const ProjectSearchBar: React.FC<ProjectSearchBarProps> = ({
           onChange={e => onSearchChange(e.target.value)}
         />
         {searchQuery && (
-          <button className="clear-search" onClick={() => onSearchChange('')}>
+          <button className="clear-search" onClick={() => onSearchChange('')} title="Очистить">
             <X size={14} />
           </button>
         )}
+      </div>
+
+      <div className="project-stats">
+        <span>{totalProjects} {totalProjects === 1 ? 'project' : 'projects'}</span>
       </div>
     </div>
   );

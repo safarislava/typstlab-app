@@ -5,9 +5,11 @@ import {
   encodeYjsStateVector, 
   applyYjsDelta, 
   decodeYjsDeltaToCells, 
-  uint8ArrayToBase64 
-} from './crdt/deltaCodec';
-import type { SyncFileManifest, SyncInstruction, User } from '../../core/types';
+  uint8ArrayToBase64,
+  yjsDocManager,
+  projectMetadataManager
+} from './crdt';
+import type { SyncRequest, SyncResponse, User, ProjectMetadataFileEntry, Cell } from '../../core/types';
 
 const inFlightSyncs = new Map<string, Promise<boolean>>();
 
@@ -35,63 +37,112 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
         }
       }
 
-      // 2. Build local files manifest with valid client UUIDs
+      // 2. Fetch local files and ensure deterministic client UUIDs
       const localFiles = await fileRepository.getFilesForProject(projectId);
-      const manifestFiles: SyncFileManifest[] = [];
       const saveFilePromises: Promise<void>[] = [];
 
       for (const file of localFiles) {
-        let fileUuid = file.fileUuid;
-        if (!fileUuid || !fileUuid.includes('-')) {
-          fileUuid = crypto.randomUUID();
-          file.fileUuid = fileUuid;
+        if (!file.fileUuid || !file.fileUuid.includes('-')) {
+          file.fileUuid = crypto.randomUUID();
           saveFilePromises.push(fileRepository.saveFile(file));
         }
-
-        manifestFiles.push({
-          id: fileUuid,
-          name: file.path,
-          type: file.isBinary ? 'binary' : 'typst',
-          yjs_state_vector: file.isBinary ? undefined : encodeYjsStateVector(fileUuid, file.cells || [])
-        });
       }
 
       if (saveFilePromises.length > 0) {
         await Promise.all(saveFilePromises);
       }
 
-      // 3. Send sync manifest request
-      let instructions: SyncInstruction[] = [];
+      // 3. Initialize / update Project Metadata CRDT with local files
+      projectMetadataManager.initFromLocalFiles(projectId, localFiles);
+
+      // 4. Build SyncRequest
+      const metadata_state_vector = projectMetadataManager.encodeMetadataStateVector(projectId);
+      const metadata_delta = projectMetadataManager.encodeMetadataDelta(projectId);
+      const content_vectors: Record<string, string> = {};
+
+      for (const file of localFiles) {
+        if (!file.isBinary && file.fileUuid) {
+          content_vectors[file.fileUuid] = encodeYjsStateVector(file.fileUuid, file.cells || []);
+        }
+      }
+
+      const syncRequest: SyncRequest = {
+        metadata_state_vector: metadata_state_vector || undefined,
+        metadata_delta: metadata_delta || undefined,
+        content_vectors: Object.keys(content_vectors).length > 0 ? content_vectors : undefined
+      };
+
+      // 5. Send POST /projects/{projectID}/sync
+      let syncResponse: SyncResponse;
       try {
-        const syncResponse = await projectsApi.syncProject(projectId, manifestFiles);
-        instructions = syncResponse.instructions || [];
-      } catch {
-        // Fallback: Upload missing files directly in parallel
-        await Promise.all(
+        syncResponse = await projectsApi.syncProject(projectId, syncRequest);
+      } catch (syncErr) {
+        console.warn('Sync handshake request failed, attempting direct upload fallback:', syncErr);
+        // Fallback: Upload missing files directly
+        await Promise.allSettled(
           localFiles.map(async localFile => {
-            try {
-              if (localFile.isBinary && localFile.binaryData) {
-                const base64Content = uint8ArrayToBase64(localFile.binaryData);
-                await filesApi.createBinaryFile(projectId, localFile.path, base64Content);
-              } else {
-                const createdFile = await filesApi.createTypstFile(projectId, localFile.path);
-                const delta = encodeCellsToYjsDelta(localFile.fileUuid || createdFile.id, localFile.cells || []);
-                await filesApi.sendTypstFileChanges(createdFile.id, delta);
+            const fileUuid = localFile.fileUuid || crypto.randomUUID();
+            if (localFile.isBinary && localFile.binaryData) {
+              const base64Content = uint8ArrayToBase64(localFile.binaryData);
+              await filesApi.createFileWithId(projectId, {
+                id: fileUuid,
+                name: localFile.path,
+                type: 'binary',
+                content: base64Content
+              });
+            } else {
+              await filesApi.createFileWithId(projectId, {
+                id: fileUuid,
+                name: localFile.path,
+                type: 'typst'
+              });
+              const delta = encodeCellsToYjsDelta(fileUuid, localFile.cells || []);
+              if (delta) {
+                await filesApi.sendTypstFileChanges(fileUuid, delta);
               }
-            } catch {
-              // Ignore fallback errors
             }
           })
         );
+        return false;
       }
 
-      // 4. Process instructions from server in parallel
-      await Promise.all(
+      // 6. Apply server metadata delta if received
+      if (syncResponse.metadata_delta) {
+        projectMetadataManager.applyMetadataDelta(projectId, syncResponse.metadata_delta);
+      }
+
+      // 7. Reflect metadata changes (deletions and renames) in local IndexedDB
+      const allMetadataEntries = projectMetadataManager.getAllEntries(projectId);
+      for (const entry of allMetadataEntries) {
+        if (entry.isDeleted) {
+          await fileRepository.deleteFile(projectId, entry.name);
+        }
+      }
+
+      // Check if any active local file was renamed in metadata
+      for (const localFile of localFiles) {
+        const metaEntry = allMetadataEntries.find((m: ProjectMetadataFileEntry) => m.id === localFile.fileUuid);
+        if (metaEntry && !metaEntry.isDeleted && metaEntry.name !== localFile.path) {
+          await fileRepository.deleteFile(projectId, localFile.path);
+          localFile.path = metaEntry.name;
+          await fileRepository.saveFile({
+            ...localFile,
+            id: `${projectId}:${metaEntry.name}`,
+            path: metaEntry.name
+          });
+        }
+      }
+
+      // 8. Process instructions from server in parallel
+      const instructions = syncResponse.instructions || [];
+      const updatedLocalFiles = await fileRepository.getFilesForProject(projectId);
+
+      await Promise.allSettled(
         instructions.map(async inst => {
           try {
             const fileId = inst.file_id;
-            const fileName = fileId.includes(':') ? fileId.split(':').slice(1).join(':') : fileId;
-            const localFile = localFiles.find(f => f.fileUuid === fileId || f.path === fileName || f.id === fileId);
+            const metaEntry = allMetadataEntries.find((m: ProjectMetadataFileEntry) => m.id === fileId);
+            const localFile = updatedLocalFiles.find(f => f.fileUuid === fileId || (metaEntry && f.path === metaEntry.name));
 
             if (inst.action === 'upload') {
               if (localFile) {
@@ -104,30 +155,81 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
                     content: base64Content
                   });
                 } else {
-                  const createdFile = await filesApi.createFileWithId(projectId, {
+                  await filesApi.createFileWithId(projectId, {
                     id: fileId,
                     name: localFile.path,
                     type: 'typst'
                   });
                   const delta = encodeCellsToYjsDelta(fileId, localFile.cells || []);
-                  await filesApi.sendTypstFileChanges(createdFile.id || fileId, delta);
+                  if (delta) {
+                    const sendRes = await filesApi.sendTypstFileChanges(fileId, delta);
+                    if (sendRes?.state) {
+                      yjsDocManager.setServerState(fileId, sendRes.state);
+                    }
+                  }
                 }
               }
             } else if (inst.action === 'download') {
-              if (inst.payload) {
-                const cells = decodeYjsDeltaToCells(inst.payload);
-                await fileRepository.saveFile({
-                  id: `${projectId}:${fileName}`,
-                  projectId,
-                  path: fileName,
-                  isBinary: false,
-                  cells,
-                  fileUuid: fileId
-                });
+              // Try downloading as Typst file first
+              try {
+                const typstRes = await filesApi.getTypstFile(fileId);
+                if (typstRes && typstRes.name) {
+                  if (typstRes.state) {
+                    yjsDocManager.setServerState(fileId, typstRes.state);
+                  }
+                  let cells: Cell[] = typstRes.blocks?.map(b => ({
+                    id: b.id,
+                    content: b.content,
+                    title: b.name
+                  })) || [];
+
+                  if (cells.length === 0 && typstRes.state) {
+                    cells = decodeYjsDeltaToCells(typstRes.state);
+                  }
+
+                  projectMetadataManager.trackFileAddition(projectId, {
+                    id: fileId,
+                    name: typstRes.name,
+                    type: 'typst'
+                  });
+
+                  await fileRepository.saveFile({
+                    id: `${projectId}:${typstRes.name}`,
+                    projectId,
+                    path: typstRes.name,
+                    isBinary: false,
+                    cells,
+                    fileUuid: fileId
+                  });
+                }
+              } catch {
+                // If not a Typst file, download as binary
+                try {
+                  const binMeta = await filesApi.getBinaryFileMetadata(fileId);
+                  const rawBytes = await filesApi.getBinaryFileRaw(fileId);
+
+                  projectMetadataManager.trackFileAddition(projectId, {
+                    id: fileId,
+                    name: binMeta.name,
+                    type: 'binary'
+                  });
+
+                  await fileRepository.saveFile({
+                    id: `${projectId}:${binMeta.name}`,
+                    projectId,
+                    path: binMeta.name,
+                    isBinary: true,
+                    binaryData: new Uint8Array(rawBytes),
+                    fileUuid: fileId
+                  });
+                } catch (binErr) {
+                  console.error(`Failed to download binary file ${fileId}:`, binErr);
+                }
               }
             } else if (inst.action === 'apply_changes') {
-              if (localFile && !localFile.isBinary && inst.payload) {
-                const updatedCells = applyYjsDelta(fileId, localFile.cells || [], inst.payload);
+              if (inst.delta) {
+                const fileName = metaEntry?.name || localFile?.path || fileId;
+                const updatedCells = applyYjsDelta(fileId, localFile?.cells || [], inst.delta);
                 await fileRepository.saveFile({
                   id: `${projectId}:${fileName}`,
                   projectId,
@@ -137,21 +239,9 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
                   fileUuid: fileId
                 });
               }
-            } else if (inst.action === 'rename' && inst.new_name) {
-              if (localFile) {
-                await fileRepository.deleteFile(projectId, localFile.path);
-                await fileRepository.saveFile({
-                  ...localFile,
-                  id: `${projectId}:${inst.new_name}`,
-                  projectId,
-                  path: inst.new_name
-                });
-              }
-            } else if (inst.action === 'delete') {
-              await fileRepository.deleteFile(projectId, fileName);
             }
           } catch (instErr) {
-            console.error(`Failed to execute sync instruction ${inst.action}:`, instErr);
+            console.error(`Failed to execute sync instruction ${inst.action} on ${inst.file_id}:`, instErr);
           }
         })
       );

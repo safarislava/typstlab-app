@@ -43,17 +43,25 @@ export function useHashRouter() {
       setCurrentHash(hash);
       const { screen, projectId } = parseRoute(hash);
 
-      // Route guards: Offline allows direct access to dashboard/editor
-      const isOffline = connectionStatus === 'offline';
-      if (isOffline && (screen === 'login' || screen === 'register')) {
-        navigateTo(projectId ? 'editor' : 'dashboard', projectId);
-        return;
+      // Route guards:
+      // 1. In offline mode: No authorization required. Disable login/register screens.
+      if (connectionStatus === 'offline') {
+        if (screen === 'login' || screen === 'register') {
+          navigateTo(projectId ? 'editor' : 'dashboard', projectId);
+          return;
+        }
       }
 
-      // Online without auth redirects to login
-      if (!isOffline && !currentUser && (screen === 'dashboard' || screen === 'editor')) {
-        navigateTo('login');
-        return;
+      // 2. In online mode (connected): Authorization is mandatory.
+      if (connectionStatus === 'connected') {
+        if (!currentUser && screen !== 'login' && screen !== 'register') {
+          navigateTo('login');
+          return;
+        }
+        if (currentUser && (screen === 'login' || screen === 'register')) {
+          navigateTo(projectId ? 'editor' : 'dashboard', projectId);
+          return;
+        }
       }
 
       dispatch(setScreen(screen));

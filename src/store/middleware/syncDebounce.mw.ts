@@ -4,6 +4,7 @@ import {
   encodeCellsToYjsDelta, 
   uint8ArrayToBase64, 
   yjsDocManager,
+  projectMetadataManager,
   syncProjectWithServer
 } from '../../services';
 
@@ -28,21 +29,62 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
 
   const result = next(action);
   const state = store.getState();
-  const connectionStatus = state.network?.connectionStatus;
   const currentProjectId = state.projects?.currentProjectId;
+  const connectionStatus = state.network?.connectionStatus;
   const currentUser = state.auth?.currentUser || undefined;
 
-  if (connectionStatus !== 'connected' || !currentProjectId) {
+  if (!currentProjectId) {
     return result;
   }
 
-  // Helper to trigger project sync fallback on client error (like 404 on changes, mismatch, etc.)
+  // 1. Track structural changes in Project Metadata CRDT (works both offline and online)
+  if (type === 'editor/addFile' || type === 'editor/addTextFileWithContent') {
+    const targetPath = (action as any).payload?.path;
+    const file = state.editor?.files?.[targetPath];
+    if (file) {
+      const fileUuid = file.fileUuid || crypto.randomUUID();
+      projectMetadataManager.trackFileAddition(currentProjectId, {
+        id: fileUuid,
+        name: targetPath,
+        type: 'typst'
+      });
+    }
+  } else if (type === 'editor/addBinaryFile') {
+    const { path } = (action as any).payload;
+    const file = state.editor?.files?.[path];
+    if (file) {
+      const fileUuid = file.fileUuid || crypto.randomUUID();
+      projectMetadataManager.trackFileAddition(currentProjectId, {
+        id: fileUuid,
+        name: path,
+        type: 'binary'
+      });
+    }
+  } else if (type === 'editor/renameFile') {
+    const { newPath } = (action as any).payload;
+    const file = state.editor?.files?.[newPath];
+    const fileUuid = renamedFileUuid || file?.fileUuid;
+    if (fileUuid) {
+      projectMetadataManager.trackFileRename(currentProjectId, fileUuid, newPath);
+    }
+  } else if (type === 'editor/deleteFile') {
+    if (deletedFileUuid) {
+      projectMetadataManager.trackFileDeletion(currentProjectId, deletedFileUuid);
+    }
+  }
+
+  // If offline, CRDT changes are preserved in metadata CRDT & IndexedDB for sync handshake on reconnect
+  if (connectionStatus !== 'connected') {
+    return result;
+  }
+
+  // Helper to trigger project sync fallback on client error
   const handleClientSyncFallback = (reason: string, err: any) => {
     console.warn(`[SyncMiddleware] ${reason}. Triggering project sync fallback.`, err);
     void syncProjectWithServer(currentProjectId, currentUser);
   };
 
-  // Handle Creations & File Adds
+  // 2. Real-time online synchronization
   if (type === 'editor/addFile' || type === 'editor/addTextFileWithContent') {
     const targetPath = (action as any).payload?.path;
     const file = state.editor?.files?.[targetPath];
@@ -53,10 +95,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
         name: targetPath,
         type: 'typst'
       })
-        .then(async res => {
-          if (res?.state) {
-            yjsDocManager.setServerState(fileUuid, res.state);
-          }
+        .then(async () => {
           const delta = encodeCellsToYjsDelta(fileUuid, file.cells || []);
           if (delta) {
             const sendRes = await filesApi.sendTypstFileChanges(fileUuid, delta);
@@ -114,7 +153,6 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
             }
           }
         } catch (err: any) {
-          // On 404 (file missing on server) or other client errors, trigger full project sync
           handleClientSyncFallback(`Failed to sync changes for ${targetPath} (${fileUuid})`, err);
         }
       }, SYNC_DEBOUNCE_MS);

@@ -1,5 +1,5 @@
 import { httpClient } from '../httpClient';
-import type { ProjectApiResponse, SyncFileManifest, SyncProjectResponse } from '../../../core/types';
+import type { ProjectApiResponse, SyncRequest, SyncResponse } from '../../../core/types';
 
 export const projectsApi = {
   async createProject(name: string): Promise<ProjectApiResponse> {
@@ -20,10 +20,10 @@ export const projectsApi = {
     return httpClient.request<ProjectApiResponse>(`/projects/${projectId}`);
   },
 
-  async syncProject(projectId: string, files: SyncFileManifest[]): Promise<SyncProjectResponse> {
-    return httpClient.request<SyncProjectResponse>(`/projects/${projectId}/sync`, {
+  async syncProject(projectId: string, syncRequest: SyncRequest): Promise<SyncResponse> {
+    return httpClient.request<SyncResponse>(`/projects/${projectId}/sync`, {
       method: 'POST',
-      body: JSON.stringify({ files })
+      body: JSON.stringify(syncRequest)
     });
   }
 };

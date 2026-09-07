@@ -1,4 +1,5 @@
 import { httpClient, authApi, projectsApi, filesApi } from '../services';
+import type { SyncRequest, SyncResponse } from '../core/types';
 
 class ApiCompatibilityWrapper {
   public setToken(token: string | null) {
@@ -49,11 +50,11 @@ class ApiCompatibilityWrapper {
     return projectsApi.createProjectWithId(id, name) as any;
   }
 
-  public async syncProject(projectId: string, files: any[]): Promise<{ instructions: any[] }> {
-    return projectsApi.syncProject(projectId, files);
+  public async syncProject(projectId: string, syncRequest: SyncRequest): Promise<SyncResponse> {
+    return projectsApi.syncProject(projectId, syncRequest);
   }
 
-  public async createFileWithId(projectId: string, fileData: { id: string; name: string; type: 'typst' | 'binary'; content?: string }): Promise<any> {
+  public async createFileWithId(projectId: string, fileData: { id: string; name: string; type?: 'typst' | 'binary'; content?: string }): Promise<any> {
     return filesApi.createFileWithId(projectId, fileData);
   }
 
@@ -63,14 +64,6 @@ class ApiCompatibilityWrapper {
 
   public async getProjectFiles(projectId: string): Promise<any[]> {
     return filesApi.getProjectFiles(projectId);
-  }
-
-  public async createTypstFile(projectId: string, name: string): Promise<any> {
-    return filesApi.createTypstFile(projectId, name);
-  }
-
-  public async createBinaryFile(projectId: string, name: string, contentBase64: string): Promise<any> {
-    return filesApi.createBinaryFile(projectId, name, contentBase64);
   }
 
   public async deleteFile(projectId: string, fileId: string): Promise<void> {

@@ -1,22 +1,28 @@
 export type SyncFileType = 'typst' | 'binary';
 
-export type SyncAction = 'upload' | 'download' | 'apply_changes' | 'rename' | 'delete';
-
-export interface SyncFileManifest {
-  id: string;
-  name: string;
-  type: SyncFileType;
-  yjs_state_vector?: string;
-  checksum?: string;
-}
+export type SyncInstructionAction = 'download' | 'upload' | 'apply_changes';
 
 export interface SyncInstruction {
-  action: SyncAction;
+  action: SyncInstructionAction;
   file_id: string;
-  new_name?: string;
-  payload?: string;
+  delta?: string; // Base64 CRDT delta update (used for apply_changes)
 }
 
-export interface SyncProjectResponse {
+export interface SyncRequest {
+  metadata_delta?: string;
+  metadata_state_vector?: string;
+  content_vectors?: Record<string, string>; // Map<file_id, Base64_state_vector>
+}
+
+export interface SyncResponse {
+  metadata_delta?: string;
   instructions: SyncInstruction[];
+}
+
+export interface ProjectMetadataFileEntry {
+  id: string; // fileUuid
+  name: string; // path
+  type: SyncFileType;
+  isDeleted?: boolean;
+  updatedAt?: number;
 }

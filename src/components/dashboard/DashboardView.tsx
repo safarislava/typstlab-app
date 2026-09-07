@@ -22,20 +22,16 @@ export const DashboardView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Load project list based on connection mode
+  // Load project list based on connection mode and user
   useEffect(() => {
     async function loadProjects() {
       try {
-        if (connectionStatus === 'connected') {
-          if (!currentUser) {
-            dispatch(setProjects([]));
-            return;
-          }
+        if (currentUser) {
           await projectRepository.migrateLegacyProjectsToUser(currentUser.username);
           const userProjects = await projectRepository.getByOwner(currentUser.username);
           dispatch(setProjects(userProjects));
         } else {
-          // Offline mode: show ALL local projects
+          // Offline / Guest mode: show ALL local projects
           const allProjects = await projectRepository.getAll();
           dispatch(setProjects(allProjects));
         }

@@ -6,10 +6,8 @@ interface NetworkState {
   lastCheckedAt: number | null;
 }
 
-const isInitiallyOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
-
 const initialState: NetworkState = {
-  connectionStatus: isInitiallyOffline ? 'offline' : 'connected',
+  connectionStatus: 'connecting',
   lastCheckedAt: null
 };
 

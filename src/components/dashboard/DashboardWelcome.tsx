@@ -31,10 +31,10 @@ export const DashboardWelcome: React.FC = () => {
             <button
               className="btn-switch-user"
               onClick={() => dispatch(logoutUser())}
-              title="Сменить пользователя"
+              title="Выйти из аккаунта"
             >
               <LogOut size={16} />
-              <span>Сменить пользователя</span>
+              <span>Выйти</span>
             </button>
           </div>
         )}

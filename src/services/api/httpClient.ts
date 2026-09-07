@@ -44,10 +44,14 @@ export class HttpClient {
 
   public async checkHealth(): Promise<boolean> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
       const response = await fetch(`${this.baseUrl}/health?_t=${Date.now()}`, {
         method: 'GET',
-        cache: 'no-store'
+        cache: 'no-store',
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       return response.status === 200;
     } catch {
       return false;

@@ -57,21 +57,14 @@ export function useProjectLoader() {
           }
         }
 
-        const authorized =
-          connectionStatus === 'connected'
-            ? allProjects.some(
-                p => p.id === projectId && (!currentUser || !p.ownerId || p.ownerId === currentUser.username)
-              )
-            : allProjects.some(p => p.id === projectId);
-
-        if (!authorized || !targetProject) {
-          setError('Project not found or not authorized');
+        if (!targetProject) {
+          setError('Project not found');
           setIsLoading(false);
           return false;
         }
 
         // 3. Populate projects list and title in Redux
-        const userProjects = (connectionStatus === 'connected' && currentUser)
+        const userProjects = currentUser
           ? allProjects.filter(p => !p.ownerId || p.ownerId === currentUser.username)
           : allProjects;
 

@@ -119,6 +119,20 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
         }
       }
 
+      // Check if any active local file was renamed in metadata
+      for (const localFile of localFiles) {
+        const metaEntry = allMetadataEntries.find((m: ProjectMetadataFileEntry) => m.id === localFile.fileUuid);
+        if (metaEntry && !metaEntry.isDeleted && metaEntry.name !== localFile.path) {
+          await fileRepository.deleteFile(projectId, localFile.path);
+          localFile.path = metaEntry.name;
+          await fileRepository.saveFile({
+            ...localFile,
+            id: `${projectId}:${metaEntry.name}`,
+            path: metaEntry.name
+          });
+        }
+      }
+
       // 8. Process instructions from server in parallel
       const instructions = syncResponse.instructions || [];
       const updatedLocalFiles = await fileRepository.getFilesForProject(projectId);
@@ -173,6 +187,12 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
                     cells = decodeYjsDeltaToCells(typstRes.state);
                   }
 
+                  projectMetadataManager.trackFileAddition(projectId, {
+                    id: fileId,
+                    name: typstRes.name,
+                    type: 'typst'
+                  });
+
                   await fileRepository.saveFile({
                     id: `${projectId}:${typstRes.name}`,
                     projectId,
@@ -187,6 +207,13 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
                 try {
                   const binMeta = await filesApi.getBinaryFileMetadata(fileId);
                   const rawBytes = await filesApi.getBinaryFileRaw(fileId);
+
+                  projectMetadataManager.trackFileAddition(projectId, {
+                    id: fileId,
+                    name: binMeta.name,
+                    type: 'binary'
+                  });
+
                   await fileRepository.saveFile({
                     id: `${projectId}:${binMeta.name}`,
                     projectId,

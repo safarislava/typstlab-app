@@ -45,7 +45,7 @@ export class WebSocketCollaborationClient {
   }
 
   private getUrl(projectId: string): string {
-    let base = '';
+    let base: string;
     if (config.wsBaseUrl) {
       base = config.wsBaseUrl.replace(/\/+$/, '');
     } else if (typeof window !== 'undefined') {

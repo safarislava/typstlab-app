@@ -116,9 +116,9 @@ export const CellEditor: React.FC<CellEditorProps> = ({
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>
-      <div className="cell-header-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <div className="cell-header-row">
         <div className="cell-lang-tag">Cell [{index}]</div>
-        <span style={{ color: '#404249', fontSize: '10px' }}>|</span>
+        <span style={{ color: '#404249', fontSize: '9px' }}>|</span>
         <input
           type="text"
           className="cell-title-input"

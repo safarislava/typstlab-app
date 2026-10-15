@@ -72,9 +72,17 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   // Retrieve appropriate LSP extensions
   const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
+  const currentUser = useAppSelector((state) => state.auth.currentUser);
+  const currentEmail = currentUser?.email;
+
   const remoteCursors = useMemo(() => {
-    return createRemoteCursorsPlugin(Object.values(collaborators), activeFile?.fileUuid, id);
-  }, [collaborators, activeFile?.fileUuid, id]);
+    return createRemoteCursorsPlugin(
+      Object.values(collaborators), 
+      activeFile?.fileUuid, 
+      id, 
+      currentEmail
+    );
+  }, [collaborators, activeFile?.fileUuid, id, currentEmail]);
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>

@@ -41,7 +41,9 @@ class RemoteCursorWidget extends WidgetType {
 export function createRemoteCursorsPlugin(
   collaborators: WSUserPresence[], 
   fileUuid?: string, 
-  cellId?: string
+  cellId?: string,
+  currentUserEmail?: string,
+  currentUserId?: string
 ) {
   return ViewPlugin.fromClass(
     class {
@@ -66,6 +68,14 @@ export function createRemoteCursorsPlugin(
         const docLen = view.state.doc.length;
         const matching = collaborators
           .filter(c => {
+            // Do not render the user's own cursor as a remote collaborator cursor
+            if (
+              (currentUserEmail && c.email?.toLowerCase() === currentUserEmail.toLowerCase()) ||
+              (currentUserId && c.user_id === currentUserId)
+            ) {
+              return false;
+            }
+
             if (c.file_id !== fileUuid || !c.cursor || typeof c.cursor.head !== 'number') {
               return false;
             }

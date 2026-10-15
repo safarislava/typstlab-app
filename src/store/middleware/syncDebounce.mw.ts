@@ -4,11 +4,11 @@ import {
   encodeCellsToYjsDelta, 
   uint8ArrayToBase64, 
   projectMetadataManager,
-  syncProjectWithServer
+  collaborationSyncService
 } from '../../services';
 
 const fileSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const SYNC_DEBOUNCE_MS = 600;
+const SYNC_DEBOUNCE_MS = 300;
 
 export const syncDebounceMiddleware: Middleware = store => next => action => {
   const type = (action as any).type;
@@ -30,14 +30,15 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
   const state = store.getState();
   const currentProjectId = state.projects?.currentProjectId;
   const connectionStatus = state.network?.connectionStatus;
-  const currentUser = state.auth?.currentUser || undefined;
 
   if (!currentProjectId) {
     return result;
   }
 
   // 1. Track structural changes in Project Metadata CRDT (works both offline and online)
+  let isStructuralChange = false;
   if (type === 'editor/addFile' || type === 'editor/addTextFileWithContent') {
+    isStructuralChange = true;
     const targetPath = (action as any).payload?.path;
     const file = state.editor?.files?.[targetPath];
     if (file) {
@@ -49,6 +50,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
       });
     }
   } else if (type === 'editor/addBinaryFile') {
+    isStructuralChange = true;
     const { path } = (action as any).payload;
     const file = state.editor?.files?.[path];
     if (file) {
@@ -60,6 +62,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
       });
     }
   } else if (type === 'editor/renameFile') {
+    isStructuralChange = true;
     const { newPath } = (action as any).payload;
     const file = state.editor?.files?.[newPath];
     const fileUuid = renamedFileUuid || file?.fileUuid;
@@ -67,9 +70,15 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
       projectMetadataManager.trackFileRename(currentProjectId, fileUuid, newPath);
     }
   } else if (type === 'editor/deleteFile') {
+    isStructuralChange = true;
     if (deletedFileUuid) {
       projectMetadataManager.trackFileDeletion(currentProjectId, deletedFileUuid);
     }
+  }
+
+  // If connected, broadcast metadata update over WebSocket
+  if (isStructuralChange && connectionStatus === 'connected') {
+    collaborationSyncService.sendMetadataUpdate(currentProjectId);
   }
 
   // If offline, CRDT changes are preserved in metadata CRDT & IndexedDB for sync handshake on reconnect
@@ -77,13 +86,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
     return result;
   }
 
-  // Helper to trigger project sync fallback on client error
-  const handleClientSyncFallback = (reason: string, err: any) => {
-    console.warn(`[SyncMiddleware] ${reason}. Triggering project sync fallback.`, err);
-    void syncProjectWithServer(currentProjectId, currentUser);
-  };
-
-  // 2. Real-time online synchronization
+  // 2. Real-time online synchronization for content and binary assets
   if (type === 'editor/addFile' || type === 'editor/addTextFileWithContent') {
     const targetPath = (action as any).payload?.path;
     const file = state.editor?.files?.[targetPath];
@@ -94,7 +97,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
         name: targetPath,
         type: 'typst'
       }).catch(err => {
-        handleClientSyncFallback(`Failed to create typst file ${targetPath}`, err);
+        console.warn(`[SyncMiddleware] Failed to create typst file ${targetPath}:`, err);
       });
     }
   } else if (type === 'editor/addBinaryFile') {
@@ -108,7 +111,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
       type: 'binary',
       content: base64Content
     }).catch(err => {
-      handleClientSyncFallback(`Failed to upload binary file ${path}`, err);
+      console.warn(`[SyncMiddleware] Failed to upload binary file ${path}:`, err);
     });
   } else if (
     type === 'editor/updateCellContent' ||
@@ -136,10 +139,10 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
         try {
           const delta = encodeCellsToYjsDelta(fileUuid, latestFile.cells || []);
           if (delta) {
-            // Note: CRDT delta is dispatched via WebSocket in Commit 6
+            collaborationSyncService.sendCrdtUpdate(fileUuid, delta);
           }
         } catch (err: any) {
-          handleClientSyncFallback(`Failed to sync changes for ${targetPath} (${fileUuid})`, err);
+          console.warn(`[SyncMiddleware] Failed to sync crdt delta for ${targetPath} (${fileUuid}):`, err);
         }
       }, SYNC_DEBOUNCE_MS);
 
@@ -152,7 +155,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
       const fileUuid = file.fileUuid || crypto.randomUUID();
       if (renamedFileUuid) {
         filesApi.deleteFile(currentProjectId, renamedFileUuid).catch(err => {
-          handleClientSyncFallback(`Failed to delete old file during rename ${renamedFileUuid}`, err);
+          console.warn(`[SyncMiddleware] Failed to delete old file during rename ${renamedFileUuid}:`, err);
         });
       }
       if (file.isBinary && file.binaryData) {
@@ -163,7 +166,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
           type: 'binary',
           content: base64Content
         }).catch(err => {
-          handleClientSyncFallback(`Failed to upload renamed binary file ${newPath}`, err);
+          console.warn(`[SyncMiddleware] Failed to upload renamed binary file ${newPath}:`, err);
         });
       } else {
         filesApi.createFileWithId(currentProjectId, {
@@ -171,14 +174,14 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
           name: newPath,
           type: 'typst'
         }).catch(err => {
-          handleClientSyncFallback(`Failed to recreate renamed typst file ${newPath}`, err);
+          console.warn(`[SyncMiddleware] Failed to recreate renamed typst file ${newPath}:`, err);
         });
       }
     }
   } else if (type === 'editor/deleteFile') {
     if (deletedFileUuid) {
       filesApi.deleteFile(currentProjectId, deletedFileUuid).catch(err => {
-        handleClientSyncFallback(`Failed to delete file ${deletedFileUuid}`, err);
+        console.warn(`[SyncMiddleware] Failed to delete file ${deletedFileUuid}:`, err);
       });
     }
   }

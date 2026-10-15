@@ -48,7 +48,7 @@ export const Login: React.FC = () => {
     try {
       const cleanEmail = username.trim();
       const loginData = await authApi.login(cleanEmail, password.trim());
-      const user = extractUserFromToken(loginData.token, cleanEmail);
+      const user = loginData?.user || extractUserFromToken(loginData?.token, cleanEmail);
 
       // Migrate any local legacy projects to this user
       await projectRepository.migrateLegacyProjectsToUser(user.username);

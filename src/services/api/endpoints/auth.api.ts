@@ -10,12 +10,10 @@ export const authApi = {
   },
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const data = await httpClient.request<LoginResponse>('/login', {
+    return httpClient.request<LoginResponse>('/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
-    httpClient.setToken(data.token);
-    return data;
   },
 
   async refresh(): Promise<string> {

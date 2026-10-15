@@ -1,4 +1,3 @@
-import { httpClient } from '../api/httpClient';
 import { config } from '../../config/env';
 import type { 
   WSMessageType, 
@@ -57,13 +56,6 @@ export class WebSocketCollaborationClient {
     }
 
     const url = new URL(`${base}/ws/projects/${projectId}`);
-    const token = httpClient.getToken();
-    if (token) {
-      url.searchParams.set('token', token);
-      url.searchParams.set('access_token', token);
-    } else {
-      console.warn('[WebSocketCollaborationClient] No access token found in storage before connecting.');
-    }
     return url.toString();
   }
 

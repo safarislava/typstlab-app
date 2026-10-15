@@ -73,7 +73,7 @@ export const filesApi = {
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    const response = await fetch(url, { headers });
+    const response = await fetch(url, { headers, credentials: 'include' });
     if (!response.ok) {
       throw new Error(`Failed to fetch raw binary: ${response.statusText}`);
     }

@@ -42,6 +42,8 @@ export class HttpClient {
     }
   }
 
+  private refreshPromise: Promise<string> | null = null;
+
   public async checkHealth(): Promise<boolean> {
     try {
       const controller = new AbortController();
@@ -49,6 +51,7 @@ export class HttpClient {
       const response = await fetch(`${this.baseUrl}/health?_t=${Date.now()}`, {
         method: 'GET',
         cache: 'no-store',
+        credentials: 'include',
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -72,6 +75,7 @@ export class HttpClient {
 
     const requestConfig: RequestInit = {
       ...options,
+      credentials: options.credentials ?? 'include',
       headers
     };
 
@@ -98,14 +102,20 @@ export class HttpClient {
       path !== '/refresh'
     ) {
       try {
-        const refreshedToken = await this.refreshToken();
-        if (refreshedToken) {
-          headers.set('Authorization', `Bearer ${refreshedToken}`);
-          response = await fetch(url, {
-            ...options,
-            headers
-          });
+        await this.refreshToken();
+        const retryHeaders = new Headers(options.headers || {});
+        const retryToken = this.getToken();
+        if (retryToken) {
+          retryHeaders.set('Authorization', `Bearer ${retryToken}`);
         }
+        if (!retryHeaders.has('Content-Type') && !(options.body instanceof FormData)) {
+          retryHeaders.set('Content-Type', 'application/json');
+        }
+        response = await fetch(url, {
+          ...options,
+          credentials: options.credentials ?? 'include',
+          headers: retryHeaders
+        });
       } catch (err) {
         console.error('Failed to auto-refresh token:', err);
         if (this.onAuthError) {
@@ -135,17 +145,29 @@ export class HttpClient {
   }
 
   public async refreshToken(): Promise<string> {
-    const data = await this.request<{ token: string }>('/refresh', {
-      method: 'POST'
-    });
-    if (data && data.token) {
-      this.setToken(data.token);
-      if (this.onTokenRefreshed) {
-        this.onTokenRefreshed(data.token);
-      }
-      return data.token;
+    if (this.refreshPromise) {
+      return this.refreshPromise;
     }
-    throw new Error('No token returned on refresh');
+
+    this.refreshPromise = (async () => {
+      try {
+        const data = await this.request<{ token?: string }>('/refresh', {
+          method: 'POST'
+        });
+        const newToken = data?.token || '';
+        if (newToken) {
+          this.setToken(newToken);
+        }
+        if (this.onTokenRefreshed) {
+          this.onTokenRefreshed(newToken);
+        }
+        return newToken;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 }
 

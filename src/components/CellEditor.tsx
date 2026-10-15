@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { useAppDispatch, useAppSelector, updateCellContent, updateCellTitle } from '../store';
 import { useLspExtensions } from '../lsp/lspManager';
+import { createRemoteCursorsPlugin } from '../lsp/remoteCursorExtension';
 import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';
 import { globalEditorRegistry } from '../lsp/editorRegistry';
 import { awarenessManager } from '../services';
@@ -28,6 +29,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   const compilerError = useAppSelector((state) => state.compiler.compilerError);
   const files = useAppSelector((state) => state.editor.files);
   const activeFilePath = useAppSelector((state) => state.editor.activeFilePath);
+  const collaborators = useAppSelector((state) => state.collaboration.collaborators);
   const activeFile = files[activeFilePath];
   const cells = activeFile && !activeFile.isBinary ? activeFile.cells : [];
 
@@ -70,6 +72,10 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   // Retrieve appropriate LSP extensions
   const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
+  const remoteCursors = useMemo(() => {
+    return createRemoteCursorsPlugin(Object.values(collaborators), activeFile?.fileUuid);
+  }, [collaborators, activeFile?.fileUuid]);
+
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>
       <div className="cell-header-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -93,7 +99,8 @@ export const CellEditor: React.FC<CellEditorProps> = ({
           extensions={[
             typstHighlightLanguage,
             EditorView.lineWrapping,
-            ...lspExtensions
+            ...lspExtensions,
+            remoteCursors
           ]}
           onChange={handleCodeChange}
           onUpdate={handleEditorUpdate}

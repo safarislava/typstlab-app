@@ -14,3 +14,4 @@ export function useLspExtensions(
   ];
 }
 export type { Diagnostic, CompletionResult } from './onlineLsp';
+export * from './remoteCursorExtension';

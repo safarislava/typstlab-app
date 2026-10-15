@@ -72,6 +72,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   // Retrieve appropriate LSP extensions
   const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
+  const showSelfCursor = useAppSelector((state) => state.collaboration.showSelfCursor);
   const currentUser = useAppSelector((state) => state.auth.currentUser);
   const currentEmail = currentUser?.email;
 
@@ -80,9 +81,9 @@ export const CellEditor: React.FC<CellEditorProps> = ({
       Object.values(collaborators), 
       activeFile?.fileUuid, 
       id, 
-      currentEmail
+      showSelfCursor ? undefined : currentEmail
     );
-  }, [collaborators, activeFile?.fileUuid, id, currentEmail]);
+  }, [collaborators, activeFile?.fileUuid, id, currentEmail, showSelfCursor]);
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>

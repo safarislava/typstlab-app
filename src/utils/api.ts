@@ -26,8 +26,8 @@ class ApiCompatibilityWrapper {
     httpClient.registerNetworkErrorCallback(callback);
   }
 
-  public async register(email: string, password: string, role: string = 'user'): Promise<any> {
-    return authApi.register(email, password, role);
+  public async register(email: string, password: string): Promise<any> {
+    return authApi.register(email, password);
   }
 
   public async login(email: string, password: string): Promise<{ token: string }> {

@@ -26,5 +26,10 @@ export interface LoginResponse {
 export interface RegisterPayload {
   email: string;
   password: string;
+}
+
+export interface RegisterResponse {
+  id?: string;
+  email: string;
   role?: string;
 }

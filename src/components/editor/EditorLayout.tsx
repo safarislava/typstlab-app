@@ -4,7 +4,7 @@ import { EditorHeader } from './Header';
 import { Sidebar } from '../Sidebar';
 import { EditorWorkspace } from '../EditorWorkspace';
 import { PreviewPanel } from '../PreviewPanel';
-import { useSplitPane, useProjectLoader } from '../../hooks';
+import { useSplitPane, useProjectLoader, useCollaborationSession } from '../../hooks';
 import type { SidebarTab } from '../sidebar/SidebarDock';
 
 interface EditorLayoutProps {
@@ -26,6 +26,9 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ projectId }) => {
   } = useSplitPane();
 
   const { loadProject } = useProjectLoader();
+
+  // Manage real-time WebSocket collaboration session
+  useCollaborationSession(projectId);
 
   // Load project files when projectId changes
   useEffect(() => {

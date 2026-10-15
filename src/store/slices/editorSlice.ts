@@ -207,6 +207,18 @@ export const editorSlice = createSlice({
       state.activeFilePath = '';
       state.activeCellId = null;
       state.title = 'Untitled Typst Document';
+    },
+    updateFileCells(state, action: PayloadAction<{ fileUuid?: string; path?: string; cells: Cell[] }>) {
+      const { fileUuid, path, cells } = action.payload;
+      let targetFile: TypstFile | undefined;
+      if (path && state.files[path]) {
+        targetFile = state.files[path];
+      } else if (fileUuid) {
+        targetFile = Object.values(state.files).find(f => f.fileUuid === fileUuid);
+      }
+      if (targetFile && !targetFile.isBinary) {
+        targetFile.cells = cells;
+      }
     }
   }
 });
@@ -227,7 +239,8 @@ export const {
   setActiveFilePath,
   addBinaryFile,
   addTextFileWithContent,
-  resetEditor
+  resetEditor,
+  updateFileCells
 } = editorSlice.actions;
 
 export default editorSlice.reducer;

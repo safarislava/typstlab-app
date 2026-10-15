@@ -1,23 +1,20 @@
+import type { 
+  WSSyncInstructionAction, 
+  WSSyncInstruction, 
+  WSSyncInitPayload, 
+  WSSyncResponsePayload 
+} from './collaboration.types';
+
 export type SyncFileType = 'typst' | 'binary';
 
-export type SyncInstructionAction = 'download' | 'upload' | 'apply_changes';
+export type SyncInstructionAction = WSSyncInstructionAction;
+export type SyncInstruction = WSSyncInstruction;
 
-export interface SyncInstruction {
-  action: SyncInstructionAction;
-  file_id: string;
-  delta?: string; // Base64 CRDT delta update (used for apply_changes)
-}
-
-export interface SyncRequest {
+export interface SyncRequest extends WSSyncInitPayload {
   metadata_delta?: string;
-  metadata_state_vector?: string;
-  content_vectors?: Record<string, string>; // Map<file_id, Base64_state_vector>
 }
 
-export interface SyncResponse {
-  metadata_delta?: string;
-  instructions: SyncInstruction[];
-}
+export type SyncResponse = WSSyncResponsePayload;
 
 export interface ProjectMetadataFileEntry {
   id: string; // fileUuid

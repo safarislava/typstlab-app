@@ -1,0 +1,126 @@
+import { wsCollaborationClient } from './webSocketClient';
+import { store } from '../../store';
+import { 
+  setCollaborators, 
+  updateCollaborator, 
+  removeCollaborator, 
+  clearCollaboration,
+  setLocalPresence
+} from '../../store/slices/collaborationSlice';
+import type { 
+  WSAwarenessSnapshotPayload, 
+  WSAwarenessUpdateClientRequest, 
+  WSAwarenessRemovePayload, 
+  WSUserPresence 
+} from '../../core/types';
+
+export class AwarenessManager {
+  private currentProjectId: string | null = null;
+  private currentFileId: string | null = null;
+  private cursorDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private unsubscribers: Array<() => void> = [];
+  private readonly cursorDebounceMs = 120;
+
+  public getCurrentFileId(): string | null {
+    return this.currentFileId;
+  }
+
+  public init(projectId: string): void {
+    if (this.currentProjectId === projectId) {
+      return;
+    }
+
+    this.cleanup();
+    this.currentProjectId = projectId;
+
+    // 1. Initial snapshot of room presences
+    const unSnapshot = wsCollaborationClient.on<WSAwarenessSnapshotPayload>('awareness_snapshot', payload => {
+      if (payload && Array.isArray(payload.presences)) {
+        store.dispatch(setCollaborators(payload.presences));
+      }
+    });
+
+    // 2. Incoming awareness update from a collaborator
+    const unUpdate = wsCollaborationClient.on<WSUserPresence>('awareness_update', payload => {
+      if (payload && payload.user_id) {
+        store.dispatch(updateCollaborator(payload));
+      }
+    });
+
+    // 3. Collaborator disconnected
+    const unRemove = wsCollaborationClient.on<WSAwarenessRemovePayload>('awareness_remove', payload => {
+      if (payload && payload.user_id) {
+        store.dispatch(removeCollaborator(payload.user_id));
+      }
+    });
+
+    // 4. On socket close, reset collaborators in store
+    const unClose = wsCollaborationClient.on('close', () => {
+      store.dispatch(clearCollaboration());
+    });
+
+    this.unsubscribers.push(unSnapshot, unUpdate, unRemove, unClose);
+  }
+
+  /**
+   * Tracks local cursor or selection changes in an active file and block.
+   */
+  public updateLocalCursor(fileId: string, anchor: number, head: number, blockId?: string): void {
+    if (!fileId) return;
+    this.currentFileId = fileId;
+
+    // Immediately update localPresence in Redux so that local UI/extensions can react with zero latency
+    const user = store.getState().auth.currentUser;
+    const email = user?.email || user?.username || 'You';
+    store.dispatch(setLocalPresence({
+      user_id: 'self',
+      email: `${email} (You)`,
+      color: '#239DAD',
+      file_id: fileId,
+      block_id: blockId,
+      cell_id: blockId,
+      cursor: {
+        anchor,
+        head,
+        block_id: blockId,
+        cell_id: blockId
+      }
+    }));
+
+    if (this.cursorDebounceTimer) {
+      clearTimeout(this.cursorDebounceTimer);
+    }
+
+    this.cursorDebounceTimer = setTimeout(() => {
+      this.cursorDebounceTimer = null;
+      if (!wsCollaborationClient.isConnected()) return;
+
+      const payload: WSAwarenessUpdateClientRequest = {
+        file_id: fileId,
+        ...(blockId ? { block_id: blockId, cell_id: blockId } : {}),
+        cursor: {
+          anchor,
+          head,
+          ...(blockId ? { block_id: blockId, cell_id: blockId } : {})
+        }
+      };
+
+      wsCollaborationClient.send<WSAwarenessUpdateClientRequest>('awareness_update', payload);
+    }, this.cursorDebounceMs);
+  }
+
+  public cleanup(): void {
+    if (this.cursorDebounceTimer) {
+      clearTimeout(this.cursorDebounceTimer);
+      this.cursorDebounceTimer = null;
+    }
+
+    this.unsubscribers.forEach(un => un());
+    this.unsubscribers = [];
+    this.currentProjectId = null;
+    this.currentFileId = null;
+    store.dispatch(setLocalPresence(null));
+  }
+}
+
+export const awarenessManager = new AwarenessManager();

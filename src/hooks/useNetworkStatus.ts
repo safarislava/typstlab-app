@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useAppDispatch, useAppSelector, setConnectionStatus, logoutUser } from '../store';
-import { authApi, httpClient, syncProjectWithServer } from '../services';
+import { authApi, httpClient, syncProjectWithServer, wsCollaborationClient, collaborationSyncService } from '../services';
 
 let isGlobalChecking = false;
 
@@ -56,6 +56,11 @@ export function useNetworkStatus() {
       currentProjectId
     ) {
       void syncProjectWithServer(currentProjectId, user || undefined);
+      if (wsCollaborationClient.isConnected()) {
+        void collaborationSyncService.sendSyncInit(currentProjectId);
+      } else {
+        wsCollaborationClient.connect(currentProjectId);
+      }
     }
     prevConnectionStatus.current = connectionStatus;
   }, [connectionStatus, currentProjectId, user]);

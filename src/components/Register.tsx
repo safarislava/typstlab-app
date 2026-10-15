@@ -67,7 +67,7 @@ export const Register: React.FC = () => {
       const usernameFromEmail = cleanEmail.split('@')[0] || 'user';
 
       // 1. Register with backend
-      await authApi.register(cleanEmail, password.trim(), 'user');
+      await authApi.register(cleanEmail, password.trim());
       
       // 2. Log in with backend
       await authApi.login(cleanEmail, password.trim());

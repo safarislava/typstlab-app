@@ -62,13 +62,6 @@ export const filesApi = {
     return httpClient.request<TypstFileApiResponse>(`/files/typst/${fileId}`);
   },
 
-  async sendTypstFileChanges(fileId: string, deltaBase64: string): Promise<TypstFileApiResponse> {
-    return httpClient.request<TypstFileApiResponse>(`/files/typst/${fileId}/changes`, {
-      method: 'POST',
-      body: JSON.stringify({ delta: deltaBase64 })
-    });
-  },
-
   async getBinaryFileMetadata(fileId: string): Promise<BinaryFileMetadataResponse> {
     return httpClient.request<BinaryFileMetadataResponse>(`/files/binary/${fileId}`);
   },

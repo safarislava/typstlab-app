@@ -1,11 +1,11 @@
 import { httpClient } from '../httpClient';
-import type { LoginResponse } from '../../../core/types';
+import type { LoginResponse, RegisterResponse } from '../../../core/types';
 
 export const authApi = {
-  async register(email: string, password: string, role: string = 'user'): Promise<any> {
-    return httpClient.request('/register', {
+  async register(email: string, password: string): Promise<RegisterResponse> {
+    return httpClient.request<RegisterResponse>('/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, role })
+      body: JSON.stringify({ email, password })
     });
   },
 

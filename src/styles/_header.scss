@@ -43,6 +43,45 @@
 
   .header-right {
     flex-shrink: 0;
+
+    .collaborators-stack {
+      display: flex;
+      align-items: center;
+      margin-right: 6px;
+
+      .collaborator-avatar {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background-color: #26282b;
+        border: 2px solid;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        margin-left: -6px;
+        transition: transform var(--transition-fast);
+        user-select: none;
+        cursor: default;
+
+        &:first-child {
+          margin-left: 0;
+        }
+
+        &:hover {
+          transform: translateY(-2px);
+          z-index: 10;
+        }
+
+        &.extra-count {
+          background-color: var(--bg-tertiary);
+          border-color: var(--border-color);
+          color: var(--text-muted);
+          font-size: 10px;
+        }
+      }
+    }
   }
 
   .breadcrumb-separator {

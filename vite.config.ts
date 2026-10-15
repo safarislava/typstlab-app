@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
         '/logout': target,
         '/projects': target,
         '/files': target,
+        '/ws': {
+          target: wsTarget,
+          ws: true,
+          changeOrigin: true
+        },
         '/lsp': {
           target: wsTarget,
           ws: true

@@ -5,6 +5,7 @@ import { ConnectionIndicator, StatusBadge } from '../../common';
 import { ProjectTitleInput } from './ProjectTitleInput';
 import { LayoutToggleButtons } from './LayoutToggleButtons';
 import { ExportPdfButton } from './ExportPdfButton';
+import { CollaboratorsStack } from './CollaboratorsStack';
 
 export const EditorHeader: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -37,6 +38,7 @@ export const EditorHeader: React.FC = () => {
       </div>
 
       <div className="header-right">
+        <CollaboratorsStack />
         <LayoutToggleButtons />
         <ExportPdfButton />
 

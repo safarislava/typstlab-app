@@ -4,6 +4,7 @@ import networkReducer from './slices/networkSlice';
 import projectsReducer from './slices/projectsSlice';
 import editorReducer from './slices/editorSlice';
 import compilerReducer from './slices/compilerSlice';
+import collaborationReducer from './slices/collaborationSlice';
 import { persistenceMiddleware, syncDebounceMiddleware } from './middleware';
 
 export const store = configureStore({
@@ -13,6 +14,7 @@ export const store = configureStore({
     projects: projectsReducer,
     editor: editorReducer,
     compiler: compilerReducer,
+    collaboration: collaborationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

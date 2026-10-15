@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
-import { EditorView } from '@codemirror/view';
+import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { useAppDispatch, useAppSelector, updateCellContent, updateCellTitle } from '../store';
 import { useLspExtensions } from '../lsp/lspManager';
 import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';
 import { globalEditorRegistry } from '../lsp/editorRegistry';
+import { awarenessManager } from '../services';
 
 interface CellEditorProps {
   id: string;
@@ -41,6 +42,16 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   const handleFocus = () => {
     onFocus();
     globalEditorRegistry.setActiveId(id);
+    if (activeFile?.fileUuid) {
+      awarenessManager.updateLocalCursor(activeFile.fileUuid, 0, 0);
+    }
+  };
+
+  const handleEditorUpdate = (update: ViewUpdate) => {
+    if (update.selectionSet && isActive && activeFile?.fileUuid) {
+      const mainSel = update.state.selection.main;
+      awarenessManager.updateLocalCursor(activeFile.fileUuid, mainSel.anchor, mainSel.head);
+    }
   };
 
   // Keep registry updated
@@ -85,6 +96,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
             ...lspExtensions
           ]}
           onChange={handleCodeChange}
+          onUpdate={handleEditorUpdate}
           basicSetup={{
             lineNumbers: true,
             foldGutter: true,

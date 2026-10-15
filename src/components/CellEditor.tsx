@@ -53,7 +53,16 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   };
 
   const handleEditorUpdate = (update: ViewUpdate) => {
-    if (update.selectionSet && isActive && activeFile?.fileUuid) {
+    if (update.view.hasFocus) {
+      if (!isActive) {
+        onFocus();
+        globalEditorRegistry.setActiveId(id);
+      }
+      if (activeFile?.fileUuid && (update.selectionSet || update.focusChanged)) {
+        const mainSel = update.state.selection.main;
+        awarenessManager.updateLocalCursor(activeFile.fileUuid, mainSel.anchor, mainSel.head, id);
+      }
+    } else if (isActive && update.selectionSet && activeFile?.fileUuid) {
       const mainSel = update.state.selection.main;
       awarenessManager.updateLocalCursor(activeFile.fileUuid, mainSel.anchor, mainSel.head, id);
     }
@@ -133,6 +142,7 @@ export const CellEditor: React.FC<CellEditorProps> = ({
           ]}
           onChange={handleCodeChange}
           onUpdate={handleEditorUpdate}
+          onFocus={handleFocus}
           basicSetup={{
             lineNumbers: true,
             foldGutter: true,

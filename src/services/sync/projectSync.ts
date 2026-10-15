@@ -21,17 +21,25 @@ export async function syncProjectWithServer(projectId: string, _currentUser?: Us
 
   const syncPromise = (async () => {
     try {
-      // 1. Check if project exists on server, create if missing (404)
+      // 1. Check if project exists on server, create only if missing (404)
       try {
         await projectsApi.getProjectDetails(projectId);
-      } catch {
-        const localProjects = await projectRepository.getAll();
-        const localProj = localProjects.find(p => p.id === projectId);
-        const projName = localProj?.name || 'Untitled Project';
-        try {
-          await projectsApi.createProjectWithId(projectId, projName);
-        } catch (createErr) {
-          console.warn('Failed to create project with client UUID on server:', createErr);
+      } catch (err: any) {
+        // If unauthorized or forbidden, abort sync without attempting creation
+        if (err?.status === 401 || err?.status === 403) {
+          return false;
+        }
+
+        // Only create on server if project is genuinely missing (404)
+        if (err?.status === 404) {
+          const localProjects = await projectRepository.getAll();
+          const localProj = localProjects.find(p => p.id === projectId);
+          const projName = localProj?.name || 'Untitled Project';
+          try {
+            await projectsApi.createProjectWithId(projectId, projName);
+          } catch (createErr) {
+            console.warn('Failed to create project with client UUID on server:', createErr);
+          }
         }
       }
 

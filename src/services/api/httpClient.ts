@@ -94,9 +94,9 @@ export class HttpClient {
       this.notifyNetworkError();
     }
 
-    // Auto-refresh token if 401 Unauthorized
+    // Auto-refresh token if 401 Unauthorized or 403 Forbidden
     if (
-      response.status === 401 &&
+      (response.status === 401 || response.status === 403) &&
       path !== '/login' &&
       path !== '/register' &&
       path !== '/refresh'
@@ -125,6 +125,17 @@ export class HttpClient {
     }
 
     if (!response.ok) {
+      if (
+        (response.status === 401 || response.status === 403) &&
+        path !== '/login' &&
+        path !== '/register' &&
+        path !== '/refresh'
+      ) {
+        if (this.onAuthError) {
+          this.onAuthError();
+        }
+      }
+
       const errorText = await response.text();
       let errorJson: any;
       try {

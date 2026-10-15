@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
-import { useAppDispatch, useAppSelector, updateCellContent, updateCellTitle } from '../store';
+import { useAppDispatch, useAppSelector, updateCellContent } from '../store';
 import { useLspExtensions } from '../lsp/lspManager';
 import { createRemoteCursorsPlugin } from '../lsp/remoteCursorExtension';
 import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';
@@ -21,10 +21,8 @@ interface CellEditorProps {
 export const CellEditor: React.FC<CellEditorProps> = ({
   id,
   content,
-  title,
   isActive,
-  onFocus,
-  index
+  onFocus
 }) => {
   const dispatch = useAppDispatch();
   const compilerError = useAppSelector((state) => state.compiler.compilerError);
@@ -36,10 +34,6 @@ export const CellEditor: React.FC<CellEditorProps> = ({
 
   const handleCodeChange = (value: string) => {
     dispatch(updateCellContent({ id, content: value }));
-  };
-
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch(updateCellTitle({ id, title: e.target.value }));
   };
 
   const handleFocus = () => {
@@ -116,19 +110,6 @@ export const CellEditor: React.FC<CellEditorProps> = ({
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>
-      <div className="cell-header-row">
-        <div className="cell-lang-tag">Cell [{index}]</div>
-        <span style={{ color: '#404249', fontSize: '9px' }}>|</span>
-        <input
-          type="text"
-          className="cell-title-input"
-          value={title || ''}
-          onChange={handleTitleChange}
-          placeholder="Section Title / Cell Note..."
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-      
       <div className="codemirror-wrapper">
         <CodeMirror
           value={content}

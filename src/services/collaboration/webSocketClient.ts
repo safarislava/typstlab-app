@@ -61,6 +61,8 @@ export class WebSocketCollaborationClient {
     if (token) {
       url.searchParams.set('token', token);
       url.searchParams.set('access_token', token);
+    } else {
+      console.warn('[WebSocketCollaborationClient] No access token found in storage before connecting.');
     }
     return url.toString();
   }
@@ -107,6 +109,7 @@ export class WebSocketCollaborationClient {
       };
 
       this.ws.onclose = (event: CloseEvent) => {
+        console.warn(`[WebSocketCollaborationClient] Socket closed (code: ${event.code}, reason: "${event.reason || 'none'}")`);
         this.stopHeartbeat();
         this.notifyStatus('disconnected');
         this.emit('close', event);

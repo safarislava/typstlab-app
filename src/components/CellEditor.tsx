@@ -45,8 +45,10 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   const handleFocus = () => {
     onFocus();
     globalEditorRegistry.setActiveId(id);
-    if (activeFile?.fileUuid) {
-      awarenessManager.updateLocalCursor(activeFile.fileUuid, 0, 0, id);
+    const view = globalEditorRegistry.get(id);
+    if (view && activeFile?.fileUuid) {
+      const sel = view.state.selection.main;
+      awarenessManager.updateLocalCursor(activeFile.fileUuid, sel.anchor, sel.head, id);
     }
   };
 
@@ -57,12 +59,14 @@ export const CellEditor: React.FC<CellEditorProps> = ({
     }
   };
 
-  // Keep registry updated and initialize local cursor position
+  // Keep registry updated and track local cursor position without resetting to 0
   useEffect(() => {
     if (isActive) {
       globalEditorRegistry.setActiveId(id);
-      if (activeFile?.fileUuid) {
-        awarenessManager.updateLocalCursor(activeFile.fileUuid, 0, 0, id);
+      const view = globalEditorRegistry.get(id);
+      if (view && activeFile?.fileUuid) {
+        const sel = view.state.selection.main;
+        awarenessManager.updateLocalCursor(activeFile.fileUuid, sel.anchor, sel.head, id);
       }
     }
   }, [isActive, id, activeFile?.fileUuid]);

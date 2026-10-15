@@ -23,6 +23,10 @@ class EditorRegistry {
     if (!this.activeId) return null;
     return this.views.get(this.activeId) || null;
   }
+
+  get(id: string): EditorView | null {
+    return this.views.get(id) || null;
+  }
 }
 
 export const globalEditorRegistry = new EditorRegistry();

@@ -12,15 +12,21 @@ import type { WSUserPresence } from '../core/types';
 class RemoteCursorWidget extends WidgetType {
   readonly email: string;
   readonly color: string;
+  readonly isFirstLine: boolean;
 
-  constructor(email: string, color: string) {
+  constructor(email: string, color: string, isFirstLine = false) {
     super();
     this.email = email;
     this.color = color;
+    this.isFirstLine = isFirstLine;
   }
 
   eq(other: RemoteCursorWidget) {
-    return other.email === this.email && other.color === this.color;
+    return (
+      other.email === this.email && 
+      other.color === this.color && 
+      other.isFirstLine === this.isFirstLine
+    );
   }
 
   toDOM() {
@@ -29,7 +35,7 @@ class RemoteCursorWidget extends WidgetType {
     wrap.style.borderLeftColor = this.color;
 
     const label = document.createElement('span');
-    label.className = 'cm-remote-cursor-tooltip';
+    label.className = `cm-remote-cursor-tooltip${this.isFirstLine ? ' first-line' : ''}`;
     label.style.backgroundColor = this.color;
     label.textContent = this.email.split('@')[0] || this.email;
     wrap.appendChild(label);
@@ -98,11 +104,14 @@ export function createRemoteCursorsPlugin(
 
         for (const c of matching) {
           const pos = Math.max(0, Math.min(c.cursor.head, docLen));
+          const line = view.state.doc.lineAt(pos);
+          const isFirstLine = line.number === 1;
+
           builder.add(
             pos,
             pos,
             Decoration.widget({
-              widget: new RemoteCursorWidget(c.email, c.color || '#3B82F6'),
+              widget: new RemoteCursorWidget(c.email, c.color || '#3B82F6', isFirstLine),
               side: 1
             })
           );

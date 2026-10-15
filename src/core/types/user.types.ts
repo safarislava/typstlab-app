@@ -20,7 +20,9 @@ export interface AuthCredentials {
 }
 
 export interface LoginResponse {
-  token: string;
+  token?: string;
+  user?: User;
+  message?: string;
 }
 
 export interface RegisterPayload {

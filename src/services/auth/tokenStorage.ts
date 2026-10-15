@@ -1,24 +1,29 @@
 const TOKEN_KEY = 'typstlab_access_token';
 const USER_KEY = 'typstlab_user';
 
+// Clean up any legacy access token stored in localStorage
+try {
+  localStorage.removeItem(TOKEN_KEY);
+} catch {
+  // Ignore localStorage access errors (e.g. in private browsing/sandboxes)
+}
+
 export const tokenStorage = {
+  /**
+   * Access token is stored exclusively in HttpOnly cookies managed by the browser.
+   * Client-side JavaScript cannot and should not access it.
+   */
   getToken(): string | null {
-    try {
-      return localStorage.getItem(TOKEN_KEY);
-    } catch {
-      return null;
-    }
+    return null;
   },
 
-  setToken(token: string | null): void {
+  setToken(_token: string | null): void {
+    // Access token is managed exclusively via HttpOnly cookies.
+    // Ensure no token is kept in localStorage.
     try {
-      if (token) {
-        localStorage.setItem(TOKEN_KEY, token);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
-    } catch (e) {
-      console.error('Failed to access localStorage for token:', e);
+      localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // Ignore
     }
   },
 

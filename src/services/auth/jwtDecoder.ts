@@ -30,10 +30,10 @@ export function decodeJwt(token: string): DecodedJwtPayload | null {
   }
 }
 
-export function extractUserFromToken(token: string, fallbackEmail: string): User {
-  const payload = decodeJwt(token);
+export function extractUserFromToken(token?: string | null, fallbackEmail: string = ''): User {
+  const payload = token ? decodeJwt(token) : null;
   const email = payload?.email || fallbackEmail;
-  const username = email.includes('@') ? email.split('@')[0] : email || 'user';
+  const username = (email && email.includes('@')) ? email.split('@')[0] : (email || 'user');
   const fullName = payload?.fullName || payload?.name || username;
 
   return {

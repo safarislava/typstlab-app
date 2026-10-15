@@ -1,4 +1,5 @@
 import { httpClient, authApi, projectsApi, filesApi } from '../services';
+import type { LoginResponse } from '../core/types';
 
 class ApiCompatibilityWrapper {
   public setToken(token: string | null) {
@@ -29,7 +30,7 @@ class ApiCompatibilityWrapper {
     return authApi.register(email, password);
   }
 
-  public async login(email: string, password: string): Promise<{ token: string }> {
+  public async login(email: string, password: string): Promise<LoginResponse> {
     return authApi.login(email, password);
   }
 

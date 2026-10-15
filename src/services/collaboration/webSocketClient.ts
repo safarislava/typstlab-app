@@ -266,7 +266,7 @@ export class WebSocketCollaborationClient {
         try {
           handler(payload);
         } catch (err) {
-          console.error(`[WebSocketCollaborationClient] Error in listener for ${type}:`, err);
+          console.error('[WebSocketCollaborationClient] Error in listener for %s:', type, err);
         }
       });
     }

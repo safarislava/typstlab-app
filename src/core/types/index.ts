@@ -4,4 +4,5 @@ export * from './project.types';
 export * from './document.types';
 export * from './network.types';
 export * from './compiler.types';
+export * from './collaboration.types';
 export * from './sync.types';

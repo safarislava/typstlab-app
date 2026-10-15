@@ -11,12 +11,14 @@ const getInitialShowSelfCursor = (): boolean => {
 
 export interface CollaborationState {
   collaborators: Record<string, WSUserPresence>;
+  localPresence: WSUserPresence | null;
   wsStatus: 'disconnected' | 'connecting' | 'connected';
   showSelfCursor: boolean;
 }
 
 const initialState: CollaborationState = {
   collaborators: {},
+  localPresence: null,
   wsStatus: 'disconnected',
   showSelfCursor: getInitialShowSelfCursor()
 };
@@ -32,6 +34,9 @@ export const collaborationSlice = createSlice({
       } catch {
         // Ignore localStorage quota/access errors
       }
+    },
+    setLocalPresence(state, action: PayloadAction<WSUserPresence | null>) {
+      state.localPresence = action.payload;
     },
     setWsStatus(state, action: PayloadAction<'disconnected' | 'connecting' | 'connected'>) {
       state.wsStatus = action.payload;
@@ -60,6 +65,7 @@ export const collaborationSlice = createSlice({
 
 export const {
   setShowSelfCursor,
+  setLocalPresence,
   setWsStatus,
   setCollaborators,
   updateCollaborator,

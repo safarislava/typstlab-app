@@ -4,7 +4,8 @@ import {
   setCollaborators, 
   updateCollaborator, 
   removeCollaborator, 
-  clearCollaboration 
+  clearCollaboration,
+  setLocalPresence
 } from '../../store/slices/collaborationSlice';
 import type { 
   WSAwarenessSnapshotPayload, 
@@ -68,6 +69,24 @@ export class AwarenessManager {
     if (!fileId) return;
     this.currentFileId = fileId;
 
+    // Immediately update localPresence in Redux so that local UI/extensions can react with zero latency
+    const user = store.getState().auth.currentUser;
+    const email = user?.email || user?.username || 'You';
+    store.dispatch(setLocalPresence({
+      user_id: 'self',
+      email: `${email} (You)`,
+      color: '#239DAD',
+      file_id: fileId,
+      block_id: blockId,
+      cell_id: blockId,
+      cursor: {
+        anchor,
+        head,
+        block_id: blockId,
+        cell_id: blockId
+      }
+    }));
+
     if (this.cursorDebounceTimer) {
       clearTimeout(this.cursorDebounceTimer);
     }
@@ -100,6 +119,7 @@ export class AwarenessManager {
     this.unsubscribers = [];
     this.currentProjectId = null;
     this.currentFileId = null;
+    store.dispatch(setLocalPresence(null));
   }
 }
 

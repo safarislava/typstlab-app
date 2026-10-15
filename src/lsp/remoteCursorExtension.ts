@@ -19,6 +19,10 @@ class RemoteCursorWidget extends WidgetType {
     this.color = color;
   }
 
+  eq(other: RemoteCursorWidget) {
+    return other.email === this.email && other.color === this.color;
+  }
+
   toDOM() {
     const wrap = document.createElement('span');
     wrap.className = 'cm-remote-cursor-caret';
@@ -54,7 +58,7 @@ export function createRemoteCursorsPlugin(
       }
 
       update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged) {
+        if (update.docChanged || update.viewportChanged || update.selectionSet) {
           this.decorations = this.buildDecorations(update.view);
         }
       }
@@ -68,12 +72,14 @@ export function createRemoteCursorsPlugin(
         const docLen = view.state.doc.length;
         const matching = collaborators
           .filter(c => {
-            // Do not render the user's own cursor as a remote collaborator cursor
-            if (
-              (currentUserEmail && c.email?.toLowerCase() === currentUserEmail.toLowerCase()) ||
-              (currentUserId && c.user_id === currentUserId)
-            ) {
-              return false;
+            // Do not render the user's own cursor as a remote collaborator cursor unless explicitly marked as 'self'
+            if (c.user_id !== 'self') {
+              if (
+                (currentUserEmail && c.email?.toLowerCase() === currentUserEmail.toLowerCase()) ||
+                (currentUserId && c.user_id === currentUserId)
+              ) {
+                return false;
+              }
             }
 
             if (c.file_id !== fileUuid || !c.cursor || typeof c.cursor.head !== 'number') {

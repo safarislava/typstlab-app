@@ -7,6 +7,7 @@ import { createRemoteCursorsPlugin } from '../lsp/remoteCursorExtension';
 import { intellijDarkTheme, typstHighlightLanguage } from '../lsp/typstHighlight';
 import { globalEditorRegistry } from '../lsp/editorRegistry';
 import { awarenessManager } from '../services';
+import type { WSUserPresence } from '../core/types';
 
 interface CellEditorProps {
   id: string;
@@ -56,12 +57,15 @@ export const CellEditor: React.FC<CellEditorProps> = ({
     }
   };
 
-  // Keep registry updated
+  // Keep registry updated and initialize local cursor position
   useEffect(() => {
     if (isActive) {
       globalEditorRegistry.setActiveId(id);
+      if (activeFile?.fileUuid) {
+        awarenessManager.updateLocalCursor(activeFile.fileUuid, 0, 0, id);
+      }
     }
-  }, [isActive, id]);
+  }, [isActive, id, activeFile?.fileUuid]);
 
   useEffect(() => {
     return () => {
@@ -73,17 +77,29 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
   const showSelfCursor = useAppSelector((state) => state.collaboration.showSelfCursor);
+  const localPresence = useAppSelector((state) => state.collaboration.localPresence);
   const currentUser = useAppSelector((state) => state.auth.currentUser);
   const currentEmail = currentUser?.email;
 
   const remoteCursors = useMemo(() => {
+    const list: WSUserPresence[] = Object.values(collaborators).filter(c => {
+      if (currentEmail && c.email?.toLowerCase() === currentEmail.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+
+    if (showSelfCursor && localPresence) {
+      list.push(localPresence);
+    }
+
     return createRemoteCursorsPlugin(
-      Object.values(collaborators), 
+      list, 
       activeFile?.fileUuid, 
       id, 
       showSelfCursor ? undefined : currentEmail
     );
-  }, [collaborators, activeFile?.fileUuid, id, currentEmail, showSelfCursor]);
+  }, [collaborators, localPresence, activeFile?.fileUuid, id, currentEmail, showSelfCursor]);
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>

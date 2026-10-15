@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => {
         '/files': target,
         '/ws': {
           target: wsTarget,
-          ws: true
+          ws: true,
+          changeOrigin: true
         },
         '/lsp': {
           target: wsTarget,

@@ -46,15 +46,23 @@ export class WebSocketCollaborationClient {
   }
 
   private getUrl(projectId: string): string {
+    let base = '';
     if (config.wsBaseUrl) {
-      const base = config.wsBaseUrl.replace(/\/+$/, '');
-      return `${base}/ws/projects/${projectId}`;
-    }
-    if (typeof window !== 'undefined') {
+      base = config.wsBaseUrl.replace(/\/+$/, '');
+    } else if (typeof window !== 'undefined') {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${protocol}//${window.location.host}/ws/projects/${projectId}`;
+      base = `${protocol}//${window.location.host}`;
+    } else {
+      base = 'ws://localhost:8080';
     }
-    return `ws://localhost:8080/ws/projects/${projectId}`;
+
+    const url = new URL(`${base}/ws/projects/${projectId}`);
+    const token = httpClient.getToken();
+    if (token) {
+      url.searchParams.set('token', token);
+      url.searchParams.set('access_token', token);
+    }
+    return url.toString();
   }
 
   private initiateConnection(): void {
@@ -62,13 +70,9 @@ export class WebSocketCollaborationClient {
 
     this.notifyStatus('connecting');
     const url = this.getUrl(this.currentProjectId);
-    const token = httpClient.getToken();
 
     try {
-      // Browser WebSockets standard constructor.
-      // Protocols array enables passing auth bearer token if supported by gateway subprotocols
-      const protocols = token ? ['Bearer', token] : undefined;
-      this.ws = new WebSocket(url, protocols);
+      this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;

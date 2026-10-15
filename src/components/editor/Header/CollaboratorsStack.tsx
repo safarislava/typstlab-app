@@ -1,9 +1,42 @@
 import React from 'react';
 import { useAppSelector } from '../../../store';
+import type { WSUserPresence } from '../../../core/types';
 
 export const CollaboratorsStack: React.FC = () => {
   const collaboratorsMap = useAppSelector(state => state.collaboration.collaborators);
-  const collaborators = Object.values(collaboratorsMap);
+  const showSelfCursor = useAppSelector(state => state.collaboration.showSelfCursor);
+  const localPresence = useAppSelector(state => state.collaboration.localPresence);
+  const currentUser = useAppSelector(state => state.auth.currentUser);
+  const currentEmail = currentUser?.email?.toLowerCase();
+
+  // Filter out the current user from remote presences
+  const otherCollaborators = Object.values(collaboratorsMap).filter(c => {
+    if (currentEmail && c.email?.toLowerCase() === currentEmail) {
+      return false;
+    }
+    return true;
+  });
+
+  // Only include self if showSelfCursor is turned on
+  const collaborators: WSUserPresence[] = [...otherCollaborators];
+  if (showSelfCursor) {
+    const selfFromServer = Object.values(collaboratorsMap).find(
+      c => currentEmail && c.email?.toLowerCase() === currentEmail
+    );
+    if (localPresence) {
+      collaborators.unshift(localPresence);
+    } else if (selfFromServer) {
+      collaborators.unshift(selfFromServer);
+    } else if (currentUser) {
+      collaborators.unshift({
+        user_id: 'self',
+        email: currentUser.email || currentUser.username || 'You',
+        color: '#239DAD',
+        file_id: '',
+        cursor: { anchor: 0, head: 0 }
+      });
+    }
+  }
 
   if (collaborators.length === 0) {
     return null;

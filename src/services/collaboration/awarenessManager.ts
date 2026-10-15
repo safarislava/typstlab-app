@@ -62,9 +62,9 @@ export class AwarenessManager {
   }
 
   /**
-   * Tracks local cursor or selection changes in an active file.
+   * Tracks local cursor or selection changes in an active file and block.
    */
-  public updateLocalCursor(fileId: string, anchor: number, head: number): void {
+  public updateLocalCursor(fileId: string, anchor: number, head: number, blockId?: string): void {
     if (!fileId) return;
     this.currentFileId = fileId;
 
@@ -78,7 +78,12 @@ export class AwarenessManager {
 
       const payload: WSAwarenessUpdateClientRequest = {
         file_id: fileId,
-        cursor: { anchor, head }
+        ...(blockId ? { block_id: blockId, cell_id: blockId } : {}),
+        cursor: {
+          anchor,
+          head,
+          ...(blockId ? { block_id: blockId, cell_id: blockId } : {})
+        }
       };
 
       wsCollaborationClient.send<WSAwarenessUpdateClientRequest>('awareness_update', payload);

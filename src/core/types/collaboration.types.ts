@@ -56,6 +56,8 @@ export interface WSMetadataUpdateBroadcast {
 export interface WSCursor {
   anchor: number;
   head: number;
+  block_id?: string;
+  cell_id?: string;
 }
 
 export interface WSUserPresence {
@@ -63,6 +65,8 @@ export interface WSUserPresence {
   email: string;
   color: string;
   file_id: string;
+  block_id?: string;
+  cell_id?: string;
   cursor: WSCursor;
 }
 
@@ -72,6 +76,8 @@ export interface WSAwarenessSnapshotPayload {
 
 export interface WSAwarenessUpdateClientRequest {
   file_id: string;
+  block_id?: string;
+  cell_id?: string;
   cursor: WSCursor;
 }
 

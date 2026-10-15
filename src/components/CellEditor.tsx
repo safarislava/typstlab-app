@@ -45,14 +45,14 @@ export const CellEditor: React.FC<CellEditorProps> = ({
     onFocus();
     globalEditorRegistry.setActiveId(id);
     if (activeFile?.fileUuid) {
-      awarenessManager.updateLocalCursor(activeFile.fileUuid, 0, 0);
+      awarenessManager.updateLocalCursor(activeFile.fileUuid, 0, 0, id);
     }
   };
 
   const handleEditorUpdate = (update: ViewUpdate) => {
     if (update.selectionSet && isActive && activeFile?.fileUuid) {
       const mainSel = update.state.selection.main;
-      awarenessManager.updateLocalCursor(activeFile.fileUuid, mainSel.anchor, mainSel.head);
+      awarenessManager.updateLocalCursor(activeFile.fileUuid, mainSel.anchor, mainSel.head, id);
     }
   };
 
@@ -73,8 +73,8 @@ export const CellEditor: React.FC<CellEditorProps> = ({
   const lspExtensions = useLspExtensions(id, cells, compilerError, content);
 
   const remoteCursors = useMemo(() => {
-    return createRemoteCursorsPlugin(Object.values(collaborators), activeFile?.fileUuid);
-  }, [collaborators, activeFile?.fileUuid]);
+    return createRemoteCursorsPlugin(Object.values(collaborators), activeFile?.fileUuid, id);
+  }, [collaborators, activeFile?.fileUuid, id]);
 
   return (
     <div className={`code-cell ${isActive ? 'active' : ''}`} onClick={handleFocus}>

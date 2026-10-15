@@ -38,7 +38,11 @@ class RemoteCursorWidget extends WidgetType {
   }
 }
 
-export function createRemoteCursorsPlugin(collaborators: WSUserPresence[], fileUuid?: string) {
+export function createRemoteCursorsPlugin(
+  collaborators: WSUserPresence[], 
+  fileUuid?: string, 
+  cellId?: string
+) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
@@ -61,7 +65,19 @@ export function createRemoteCursorsPlugin(collaborators: WSUserPresence[], fileU
 
         const docLen = view.state.doc.length;
         const matching = collaborators
-          .filter(c => c.file_id === fileUuid && c.cursor && typeof c.cursor.head === 'number')
+          .filter(c => {
+            if (c.file_id !== fileUuid || !c.cursor || typeof c.cursor.head !== 'number') {
+              return false;
+            }
+            const targetBlock = c.cursor.block_id || c.cursor.cell_id || c.block_id || c.cell_id;
+            if (cellId && targetBlock) {
+              return targetBlock === cellId;
+            }
+            if (!cellId && !targetBlock) {
+              return true;
+            }
+            return false;
+          })
           .sort((a, b) => a.cursor.head - b.cursor.head);
 
         for (const c of matching) {

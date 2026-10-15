@@ -1,5 +1,4 @@
 import { httpClient, authApi, projectsApi, filesApi } from '../services';
-import type { SyncRequest, SyncResponse } from '../core/types';
 
 class ApiCompatibilityWrapper {
   public setToken(token: string | null) {
@@ -50,10 +49,6 @@ class ApiCompatibilityWrapper {
     return projectsApi.createProjectWithId(id, name) as any;
   }
 
-  public async syncProject(projectId: string, syncRequest: SyncRequest): Promise<SyncResponse> {
-    return projectsApi.syncProject(projectId, syncRequest);
-  }
-
   public async createFileWithId(projectId: string, fileData: { id: string; name: string; type?: 'typst' | 'binary'; content?: string }): Promise<any> {
     return filesApi.createFileWithId(projectId, fileData);
   }
@@ -72,10 +67,6 @@ class ApiCompatibilityWrapper {
 
   public async getTypstFile(fileId: string): Promise<any> {
     return filesApi.getTypstFile(fileId);
-  }
-
-  public async sendTypstFileChanges(fileId: string, deltaBase64: string): Promise<any> {
-    return filesApi.sendTypstFileChanges(fileId, deltaBase64);
   }
 
   public async getBinaryFileMetadata(fileId: string): Promise<any> {

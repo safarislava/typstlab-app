@@ -3,7 +3,6 @@ import {
   filesApi,
   encodeCellsToYjsDelta, 
   uint8ArrayToBase64, 
-  yjsDocManager,
   projectMetadataManager,
   syncProjectWithServer
 } from '../../services';
@@ -94,19 +93,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
         id: fileUuid,
         name: targetPath,
         type: 'typst'
-      })
-        .then(async () => {
-          const delta = encodeCellsToYjsDelta(fileUuid, file.cells || []);
-          if (delta) {
-            const sendRes = await filesApi.sendTypstFileChanges(fileUuid, delta);
-            if (sendRes?.state) {
-              yjsDocManager.setServerState(fileUuid, sendRes.state);
-            }
-          }
-        })
-        .catch(err => {
-          handleClientSyncFallback(`Failed to create typst file ${targetPath}`, err);
-        });
+      }).catch(err => {
+        handleClientSyncFallback(`Failed to create typst file ${targetPath}`, err);
+      });
     }
   } else if (type === 'editor/addBinaryFile') {
     const { path, binaryData } = (action as any).payload;
@@ -147,10 +136,7 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
         try {
           const delta = encodeCellsToYjsDelta(fileUuid, latestFile.cells || []);
           if (delta) {
-            const sendRes = await filesApi.sendTypstFileChanges(fileUuid, delta);
-            if (sendRes?.state) {
-              yjsDocManager.setServerState(fileUuid, sendRes.state);
-            }
+            // Note: CRDT delta is dispatched via WebSocket in Commit 6
           }
         } catch (err: any) {
           handleClientSyncFallback(`Failed to sync changes for ${targetPath} (${fileUuid})`, err);
@@ -184,16 +170,9 @@ export const syncDebounceMiddleware: Middleware = store => next => action => {
           id: fileUuid,
           name: newPath,
           type: 'typst'
-        })
-          .then(async () => {
-            const delta = encodeCellsToYjsDelta(fileUuid, file.cells || []);
-            if (delta) {
-              await filesApi.sendTypstFileChanges(fileUuid, delta);
-            }
-          })
-          .catch(err => {
-            handleClientSyncFallback(`Failed to recreate renamed typst file ${newPath}`, err);
-          });
+        }).catch(err => {
+          handleClientSyncFallback(`Failed to recreate renamed typst file ${newPath}`, err);
+        });
       }
     }
   } else if (type === 'editor/deleteFile') {

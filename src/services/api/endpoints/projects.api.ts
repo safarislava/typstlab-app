@@ -1,5 +1,5 @@
 import { httpClient } from '../httpClient';
-import type { ProjectApiResponse, SyncRequest, SyncResponse } from '../../../core/types';
+import type { ProjectApiResponse } from '../../../core/types';
 
 export const projectsApi = {
   async createProject(name: string): Promise<ProjectApiResponse> {
@@ -18,12 +18,6 @@ export const projectsApi = {
 
   async getProjectDetails(projectId: string): Promise<ProjectApiResponse> {
     return httpClient.request<ProjectApiResponse>(`/projects/${projectId}`);
-  },
-
-  async syncProject(projectId: string, syncRequest: SyncRequest): Promise<SyncResponse> {
-    return httpClient.request<SyncResponse>(`/projects/${projectId}/sync`, {
-      method: 'POST',
-      body: JSON.stringify(syncRequest)
-    });
   }
 };
+

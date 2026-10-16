@@ -14,7 +14,7 @@ interface EditorLayoutProps {
 export const EditorLayout: React.FC<EditorLayoutProps> = ({ projectId }) => {
   const dispatch = useAppDispatch();
   const previewMode = useAppSelector(state => state.editor.previewMode);
-  const [activeTab, setActiveTab] = useState<SidebarTab | null>('files');
+  const [activeTab, setActiveTab] = useState<SidebarTab | null>(null);
   const [isWorkspaceNarrow, setIsWorkspaceNarrow] = useState(false);
 
   const {

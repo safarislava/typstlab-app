@@ -37,6 +37,7 @@ export function extractUserFromToken(token?: string | null, fallbackEmail: strin
   const fullName = payload?.fullName || payload?.name || username;
 
   return {
+    id: payload?.sub || undefined,
     username,
     email,
     fullName

@@ -19,6 +19,14 @@ export default defineConfig(({ mode }) => {
         '/logout': target,
         '/projects': target,
         '/files': target,
+        '/invites': {
+          target,
+          bypass(req) {
+            if (req.headers.accept?.includes('text/html')) {
+              return '/index.html';
+            }
+          }
+        },
         '/ws': {
           target: wsTarget,
           ws: true,

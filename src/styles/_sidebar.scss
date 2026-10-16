@@ -756,31 +756,41 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 
-    .expiry-picker {
+    .expiry-selection-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
-      color: var(--text-muted);
+      gap: 8px;
 
-      .expiry-pills {
+      .field-hint {
+        font-size: 11px;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .expiry-tabs {
         display: flex;
-        gap: 3px;
+        flex: 1;
+        max-width: 140px;
         background: rgba(0, 0, 0, 0.3);
         padding: 2px;
-        border-radius: 4px;
+        border-radius: 5px;
         border: 1px solid var(--border-color);
+        gap: 2px;
 
-        .expiry-pill {
+        .expiry-tab {
+          flex: 1;
           background: transparent;
           border: none;
           color: var(--text-muted);
           font-size: 10px;
-          padding: 2px 7px;
+          padding: 3px 0;
           border-radius: 3px;
           cursor: pointer;
+          text-align: center;
+          white-space: nowrap;
           transition: all var(--transition-fast);
 
           &:hover:not(:disabled) {
@@ -790,7 +800,7 @@
           &.active {
             background: var(--accent-color);
             color: white;
-            font-weight: 500;
+            font-weight: 600;
           }
 
           &:disabled {
@@ -807,11 +817,11 @@
       justify-content: center;
       gap: 6px;
       background: rgba(35, 157, 173, 0.12);
-      border: 1px solid var(--accent-color);
+      border: 1px solid rgba(35, 157, 173, 0.4);
       color: var(--accent-color);
       padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 12px;
+      border-radius: 5px;
+      font-size: 11px;
       font-weight: 500;
       cursor: pointer;
       transition: all var(--transition-fast);
@@ -831,18 +841,24 @@
   .invites-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 
     .invite-card {
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 8px;
+      padding: 6px 8px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
 
-      .invite-meta {
+      &:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+
+      .invite-card-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -852,78 +868,114 @@
           display: flex;
           align-items: center;
           gap: 6px;
-          font-family: monospace;
-          font-size: 11px;
-          color: var(--text-main);
-          background: rgba(255, 255, 255, 0.04);
-          padding: 2px 6px;
-          border-radius: 3px;
+          cursor: pointer;
+          min-width: 0;
+          flex: 1;
 
           .invite-status-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background-color: #4ade80;
-            box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+            flex-shrink: 0;
           }
-        }
 
-        .invite-expiry {
-          display: flex;
-          align-items: center;
-          gap: 3px;
-          font-size: 10px;
-          color: var(--text-muted);
-        }
-      }
-
-      .invite-actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 6px;
-
-        .btn-invite-action {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 11px;
-          padding: 3px 8px;
-          border-radius: 4px;
-          border: 1px solid var(--border-color);
-          background: rgba(255, 255, 255, 0.03);
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-
-          &:hover {
+          .code-text {
+            font-family: monospace;
+            font-size: 11px;
             color: var(--text-main);
-            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
-          &.copy-btn {
-            flex: 1;
+          &:hover .code-text {
+            color: var(--accent-color);
+          }
+        }
+
+        .invite-card-actions {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          flex-shrink: 0;
+
+          .btn-action-icon {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            transition: all var(--transition-fast);
+
+            &:hover {
+              color: var(--text-main);
+              background: rgba(255, 255, 255, 0.08);
+            }
 
             &.copied {
               color: #4ade80;
-              border-color: rgba(74, 222, 128, 0.4);
-              background: rgba(74, 222, 128, 0.1);
+              background: rgba(74, 222, 128, 0.15);
             }
-          }
 
-          &.revoke-btn {
-            &:hover:not(:disabled) {
+            &.delete-icon:hover {
               color: #ef4444;
-              border-color: rgba(239, 68, 68, 0.4);
               background: rgba(239, 68, 68, 0.1);
             }
+          }
 
-            &:disabled {
-              opacity: 0.4;
-              cursor: not-allowed;
+          .inline-confirm {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+
+            .confirm-btn {
+              font-size: 10px;
+              padding: 2px 5px;
+              border-radius: 3px;
+              border: none;
+              cursor: pointer;
+              font-weight: 500;
+
+              &.danger {
+                background: #ef4444;
+                color: white;
+              }
+
+              &.cancel {
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--text-muted);
+              }
             }
           }
+        }
+      }
+
+      .invite-card-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-left: 12px;
+
+        .invite-expiry-info {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 10px;
+          color: var(--text-muted);
+        }
+
+        .copied-tag {
+          font-size: 9px;
+          font-weight: 600;
+          color: #4ade80;
+          background: rgba(74, 222, 128, 0.15);
+          padding: 1px 4px;
+          border-radius: 3px;
         }
       }
     }

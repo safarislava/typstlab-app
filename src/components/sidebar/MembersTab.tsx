@@ -21,10 +21,10 @@ function formatExpiryDate(dateStr: string): string {
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
     if (diffMs <= 0) return 'Expired';
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 24) return `${Math.max(1, diffHours)}h left`;
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 1) return 'Expires tomorrow';
-    if (diffDays < 7) return `Expires in ${diffDays} days`;
-    return `Expires ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    return `${diffDays}d left`;
   } catch {
     return dateStr;
   }
@@ -351,9 +351,9 @@ export const MembersTab: React.FC = () => {
 
         {/* Create Invite Controls */}
         <div className="create-invite-panel">
-          <div className="expiry-picker">
-            <span className="expiry-label">Expires in:</span>
-            <div className="expiry-pills">
+          <div className="expiry-selection-row">
+            <span className="field-hint">Expires in</span>
+            <div className="expiry-tabs">
               {[
                 { label: '1 day', days: 1 },
                 { label: '7 days', days: 7 },
@@ -362,7 +362,7 @@ export const MembersTab: React.FC = () => {
                 <button
                   key={opt.days}
                   type="button"
-                  className={`expiry-pill ${expiryDays === opt.days ? 'active' : ''}`}
+                  className={`expiry-tab ${expiryDays === opt.days ? 'active' : ''}`}
                   onClick={() => setExpiryDays(opt.days)}
                   disabled={isCreatingInvite}
                 >
@@ -373,12 +373,13 @@ export const MembersTab: React.FC = () => {
           </div>
 
           <button
+            type="button"
             className="btn-create-invite"
             onClick={handleCreateInvite}
             disabled={isCreatingInvite}
           >
-            <LinkIcon size={14} />
-            <span>{isCreatingInvite ? 'Creating...' : 'Create Invite Link'}</span>
+            <LinkIcon size={13} />
+            <span>{isCreatingInvite ? 'Generating...' : 'Create Invite Link'}</span>
           </button>
         </div>
 
@@ -409,55 +410,66 @@ export const MembersTab: React.FC = () => {
 
             return (
               <div key={invite.id} className="invite-card">
-                <div className="invite-meta">
-                  <div className="invite-code-pill" title={`Click to copy: /#/invite/${invite.code}`}>
+                <div className="invite-card-top">
+                  <div 
+                    className="invite-code-pill" 
+                    title={`Click to copy: /#/invite/${invite.code}`}
+                    onClick={() => handleCopyLink(invite)}
+                  >
                     <span className="invite-status-dot" />
-                    <span className="code-text">{invite.code.slice(0, 8)}...</span>
+                    <span className="code-text">{invite.code.slice(0, 10)}...</span>
                   </div>
-                  <div className="invite-expiry" title={invite.expires_at}>
-                    <Clock size={11} />
-                    <span>{expiryText}</span>
+
+                  <div className="invite-card-actions">
+                    <button
+                      type="button"
+                      className={`btn-action-icon copy-icon ${isCopied ? 'copied' : ''}`}
+                      onClick={() => handleCopyLink(invite)}
+                      title={isCopied ? "Copied link!" : "Copy link"}
+                    >
+                      {isCopied ? <Check size={13} /> : <Copy size={13} />}
+                    </button>
+
+                    {isConfirmingRevoke ? (
+                      <div className="inline-confirm">
+                        <button
+                          type="button"
+                          className="confirm-btn danger"
+                          onClick={() => handleRevokeInvite(invite.id)}
+                          disabled={isRevoking}
+                          title="Confirm revocation"
+                        >
+                          Revoke
+                        </button>
+                        <button
+                          type="button"
+                          className="confirm-btn cancel"
+                          onClick={() => setConfirmRevokeId(null)}
+                          disabled={isRevoking}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-action-icon delete-icon"
+                        onClick={() => setConfirmRevokeId(invite.id)}
+                        disabled={isRevoking}
+                        title="Revoke link"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="invite-actions">
-                  <button
-                    className={`btn-invite-action copy-btn ${isCopied ? 'copied' : ''}`}
-                    onClick={() => handleCopyLink(invite)}
-                    title="Copy full invite link to clipboard"
-                  >
-                    {isCopied ? <Check size={13} /> : <Copy size={13} />}
-                    <span>{isCopied ? 'Copied Link!' : 'Copy Link'}</span>
-                  </button>
-
-                  {isConfirmingRevoke ? (
-                    <div className="inline-confirm">
-                      <button
-                        className="confirm-btn danger"
-                        onClick={() => handleRevokeInvite(invite.id)}
-                        disabled={isRevoking}
-                        title="Confirm revocation"
-                      >
-                        Revoke
-                      </button>
-                      <button
-                        className="confirm-btn cancel"
-                        onClick={() => setConfirmRevokeId(null)}
-                        disabled={isRevoking}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      className="btn-invite-action revoke-btn"
-                      onClick={() => setConfirmRevokeId(invite.id)}
-                      disabled={isRevoking}
-                      title="Revoke invite link"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
+                <div className="invite-card-bottom">
+                  <div className="invite-expiry-info">
+                    <Clock size={11} />
+                    <span>{expiryText}</span>
+                  </div>
+                  {isCopied && <span className="copied-tag">Copied!</span>}
                 </div>
               </div>
             );

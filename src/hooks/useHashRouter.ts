@@ -7,9 +7,23 @@ export function useHashRouter() {
   const connectionStatus = useAppSelector(state => state.network.connectionStatus);
   const currentUser = useAppSelector(state => state.auth.currentUser);
 
-  const [currentHash, setCurrentHash] = useState(() =>
-    typeof window !== 'undefined' ? window.location.hash : ''
-  );
+  const normalizeLocation = useCallback(() => {
+    if (typeof window === 'undefined') return '';
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/invites/') || pathname.startsWith('/invite/')) {
+      const code = pathname
+        .replace(/^\/(invites|invite)\//, '')
+        .replace(/\/accept\/?$/, '')
+        .replace(/\/$/, '');
+      if (code) {
+        window.history.replaceState(null, '', `/#/invite/${code}`);
+        return `#/invite/${code}`;
+      }
+    }
+    return window.location.hash;
+  }, []);
+
+  const [currentHash, setCurrentHash] = useState(() => normalizeLocation());
 
   const parseRoute = useCallback((hash: string) => {
     if (hash.startsWith('#/project/')) {
@@ -17,7 +31,8 @@ export function useHashRouter() {
       return { screen: 'editor' as ScreenType, projectId, inviteCode: null };
     }
     if (hash.startsWith('#/invite/') || hash.startsWith('#/invites/')) {
-      const inviteCode = hash.replace(/^#\/(invite|invites)\//, '');
+      const rawCode = hash.replace(/^#\/(invite|invites)\//, '');
+      const inviteCode = rawCode.replace(/\/accept\/?$/, '').replace(/\/$/, '');
       return { screen: 'invite' as ScreenType, projectId: null, inviteCode };
     }
     if (hash === '#/login') {
@@ -43,7 +58,7 @@ export function useHashRouter() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash;
+      const hash = normalizeLocation();
       setCurrentHash(hash);
       const { screen, projectId, inviteCode } = parseRoute(hash);
 
@@ -87,7 +102,7 @@ export function useHashRouter() {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [connectionStatus, currentUser, dispatch, navigateTo, parseRoute]);
+  }, [connectionStatus, currentUser, dispatch, navigateTo, normalizeLocation, parseRoute]);
 
   const { screen, projectId, inviteCode } = parseRoute(currentHash);
 

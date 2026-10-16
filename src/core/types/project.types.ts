@@ -22,6 +22,29 @@ export interface ProjectUpdateDto {
 export interface ProjectApiResponse {
   id: string;
   name: string;
+  user_ids?: string[];
   updated_at?: string;
   created_at?: string;
+}
+
+export interface ProjectMember {
+  id: string; // UUID
+  email: string;
+}
+
+export interface AddMemberRequest {
+  email: string;
+}
+
+export interface CreateInviteRequest {
+  expires_at?: string; // ISO 8601 UTC (RFC3339)
+}
+
+export interface ProjectInvite {
+  id: string; // UUID
+  project_id: string; // UUID
+  code: string;
+  created_by: string; // UUID
+  expires_at: string; // ISO 8601 (RFC3339)
+  created_at: string; // ISO 8601 (RFC3339)
 }

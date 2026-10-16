@@ -14,15 +14,19 @@ export function useHashRouter() {
   const parseRoute = useCallback((hash: string) => {
     if (hash.startsWith('#/project/')) {
       const projectId = hash.replace('#/project/', '');
-      return { screen: 'editor' as ScreenType, projectId };
+      return { screen: 'editor' as ScreenType, projectId, inviteCode: null };
+    }
+    if (hash.startsWith('#/invite/') || hash.startsWith('#/invites/')) {
+      const inviteCode = hash.replace(/^#\/(invite|invites)\//, '');
+      return { screen: 'invite' as ScreenType, projectId: null, inviteCode };
     }
     if (hash === '#/login') {
-      return { screen: 'login' as ScreenType, projectId: null };
+      return { screen: 'login' as ScreenType, projectId: null, inviteCode: null };
     }
     if (hash === '#/register') {
-      return { screen: 'register' as ScreenType, projectId: null };
+      return { screen: 'register' as ScreenType, projectId: null, inviteCode: null };
     }
-    return { screen: 'dashboard' as ScreenType, projectId: null };
+    return { screen: 'dashboard' as ScreenType, projectId: null, inviteCode: null };
   }, []);
 
   const navigateTo = useCallback((screen: ScreenType, projectId?: string | null) => {
@@ -41,12 +45,12 @@ export function useHashRouter() {
     const handleHashChange = () => {
       const hash = window.location.hash;
       setCurrentHash(hash);
-      const { screen, projectId } = parseRoute(hash);
+      const { screen, projectId, inviteCode } = parseRoute(hash);
 
       // Route guards:
       // 1. In offline mode: No authorization required. Disable login/register screens.
       if (connectionStatus === 'offline') {
-        if (screen === 'login' || screen === 'register') {
+        if (screen === 'login' || screen === 'register' || screen === 'invite') {
           navigateTo(projectId ? 'editor' : 'dashboard', projectId);
           return;
         }
@@ -55,10 +59,19 @@ export function useHashRouter() {
       // 2. In online mode (connected): Authorization is mandatory.
       if (connectionStatus === 'connected') {
         if (!currentUser && screen !== 'login' && screen !== 'register') {
+          if (screen === 'invite' && inviteCode) {
+            sessionStorage.setItem('pending_invite_code', inviteCode);
+          }
           navigateTo('login');
           return;
         }
         if (currentUser && (screen === 'login' || screen === 'register')) {
+          const pendingInvite = sessionStorage.getItem('pending_invite_code');
+          if (pendingInvite) {
+            sessionStorage.removeItem('pending_invite_code');
+            window.location.hash = `#/invite/${pendingInvite}`;
+            return;
+          }
           navigateTo(projectId ? 'editor' : 'dashboard', projectId);
           return;
         }
@@ -76,11 +89,12 @@ export function useHashRouter() {
     };
   }, [connectionStatus, currentUser, dispatch, navigateTo, parseRoute]);
 
-  const { screen, projectId } = parseRoute(currentHash);
+  const { screen, projectId, inviteCode } = parseRoute(currentHash);
 
   return {
     screen,
     projectId,
+    inviteCode,
     navigateTo
   };
 }

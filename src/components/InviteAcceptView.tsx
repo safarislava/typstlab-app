@@ -57,30 +57,47 @@ export const InviteAcceptView: React.FC<InviteAcceptViewProps> = ({ inviteCode }
   }, [inviteCode]);
 
   return (
-    <div className="auth-page">
-      <div className="auth-card" style={{ maxWidth: '440px', padding: '32px', textAlign: 'center' }}>
+    <div className="auth-container">
+      <div 
+        className="invite-accept-card" 
+        style={{ 
+          width: '100%', 
+          maxWidth: '440px', 
+          backgroundColor: 'var(--bg-primary)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '16px',
+          boxShadow: 'var(--shadow-lg)',
+          padding: '40px 32px', 
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          animation: 'authFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+        }}
+      >
         {status === 'loading' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <RotateCw size={36} className="spin-animation" style={{ color: 'var(--accent-color)' }} />
-            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Joining Project...</h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
+            <RotateCw size={40} className="spin-animation" style={{ color: 'var(--accent-color)' }} />
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-main)', margin: '8px 0 0 0' }}>Joining Project...</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
               Validating your invite and setting up workspace access.
             </p>
           </div>
         )}
 
         {status === 'success' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <CheckCircle2 size={40} style={{ color: '#4ade80' }} />
-            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Joined Successfully!</h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
+            <CheckCircle2 size={44} style={{ color: '#4ade80' }} />
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-main)', margin: '8px 0 0 0' }}>Joined Successfully!</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
               You now have access to <strong>{projectName}</strong>. Redirecting you to the editor...
             </p>
             {projectId && (
               <button
-                className="btn-submit-primary"
+                className="auth-submit-btn"
                 onClick={() => { window.location.hash = `#/project/${projectId}`; }}
-                style={{ marginTop: '8px' }}
+                style={{ width: '100%', marginTop: '12px' }}
               >
                 <span>Open Project</span>
                 <ArrowRight size={16} />
@@ -90,16 +107,29 @@ export const InviteAcceptView: React.FC<InviteAcceptViewProps> = ({ inviteCode }
         )}
 
         {status === 'error' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <AlertCircle size={40} style={{ color: '#f87171' }} />
-            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Invitation Error</h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
+            <div 
+              style={{ 
+                width: '64px', 
+                height: '64px', 
+                borderRadius: '50%', 
+                backgroundColor: 'rgba(244, 63, 94, 0.1)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: '#f87171'
+              }}
+            >
+              <AlertCircle size={36} />
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-main)', margin: '4px 0 0 0' }}>Invitation Error</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', margin: '0 0 8px 0' }}>
               {errorMessage}
             </p>
             <button
-              className="btn-submit-primary"
+              className="auth-submit-btn"
               onClick={() => { window.location.hash = '#/'; }}
-              style={{ marginTop: '8px' }}
+              style={{ width: '100%' }}
             >
               <span>Back to Projects</span>
             </button>

@@ -351,25 +351,22 @@ export const MembersTab: React.FC = () => {
 
         {/* Create Invite Controls */}
         <div className="create-invite-panel">
-          <div className="expiry-selection-row">
-            <span className="field-hint">Expires in</span>
-            <div className="expiry-tabs">
-              {[
-                { label: '1 day', days: 1 },
-                { label: '7 days', days: 7 },
-                { label: '30 days', days: 30 }
-              ].map(opt => (
-                <button
-                  key={opt.days}
-                  type="button"
-                  className={`expiry-tab ${expiryDays === opt.days ? 'active' : ''}`}
-                  onClick={() => setExpiryDays(opt.days)}
-                  disabled={isCreatingInvite}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          <div className="expiry-tabs">
+            {[
+              { label: '1 day', days: 1 },
+              { label: '7 days', days: 7 },
+              { label: '30 days', days: 30 }
+            ].map(opt => (
+              <button
+                key={opt.days}
+                type="button"
+                className={`expiry-tab ${expiryDays === opt.days ? 'active' : ''}`}
+                onClick={() => setExpiryDays(opt.days)}
+                disabled={isCreatingInvite}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
 
           <button
@@ -402,22 +399,23 @@ export const MembersTab: React.FC = () => {
             <div className="tab-empty-hint">No active invite links.</div>
           )}
 
-          {invites.map(invite => {
+          {invites.map((invite, index) => {
             const isCopied = copiedInviteId === invite.id;
             const isRevoking = revokingInviteId === invite.id;
             const isConfirmingRevoke = confirmRevokeId === invite.id;
             const expiryText = formatExpiryDate(invite.expires_at);
+            const linkTitle = invites.length > 1 ? `Invite link #${index + 1}` : 'Invite link';
 
             return (
               <div key={invite.id} className="invite-card">
                 <div className="invite-card-top">
                   <div 
                     className="invite-code-pill" 
-                    title={`Click to copy: /#/invite/${invite.code}`}
+                    title="Click to copy invite link"
                     onClick={() => handleCopyLink(invite)}
                   >
                     <span className="invite-status-dot" />
-                    <span className="code-text">{invite.code.slice(0, 10)}...</span>
+                    <span className="code-text">{linkTitle}</span>
                   </div>
 
                   <div className="invite-card-actions">

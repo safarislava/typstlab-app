@@ -152,23 +152,6 @@ export const InviteAcceptView: React.FC<InviteAcceptViewProps> = ({ inviteCode }
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
               Validating token and setting up real-time collaboration access...
             </p>
-            
-            {inviteCode && (
-              <div 
-                style={{
-                  fontFamily: 'monospace',
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid var(--border-color)',
-                  marginTop: '8px'
-                }}
-              >
-                Code: {inviteCode.slice(0, 16)}...
-              </div>
-            )}
           </div>
         )}
 

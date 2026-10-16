@@ -758,27 +758,14 @@
     gap: 8px;
     margin-bottom: 12px;
 
-    .expiry-selection-row {
+    .expiry-tabs {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-
-      .field-hint {
-        font-size: 11px;
-        color: var(--text-muted);
-        white-space: nowrap;
-      }
-
-      .expiry-tabs {
-        display: flex;
-        flex: 1;
-        max-width: 140px;
-        background: rgba(0, 0, 0, 0.3);
-        padding: 2px;
-        border-radius: 5px;
-        border: 1px solid var(--border-color);
-        gap: 2px;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px;
+      border-radius: 5px;
+      border: 1px solid var(--border-color);
+      gap: 2px;
 
         .expiry-tab {
           flex: 1;
@@ -809,7 +796,6 @@
           }
         }
       }
-    }
 
     .btn-create-invite {
       display: flex;

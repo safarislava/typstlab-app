@@ -829,14 +829,15 @@
     flex-direction: column;
     gap: 6px;
 
-    .invite-card {
+    .invite-item {
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 6px 8px;
+      padding: 6px 10px;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       transition: background var(--transition-fast), border-color var(--transition-fast);
 
       &:hover {
@@ -844,124 +845,75 @@
         border-color: rgba(255, 255, 255, 0.15);
       }
 
-      .invite-card-top {
+      .invite-expiry-info {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 6px;
+        font-size: 12px;
+        color: var(--text-main);
+        font-weight: 500;
 
-        .invite-code-pill {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          cursor: pointer;
-          min-width: 0;
-          flex: 1;
-
-          .invite-status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background-color: #4ade80;
-            flex-shrink: 0;
-          }
-
-          .code-text {
-            font-family: monospace;
-            font-size: 11px;
-            color: var(--text-main);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          &:hover .code-text {
-            color: var(--accent-color);
-          }
-        }
-
-        .invite-card-actions {
-          display: flex;
-          align-items: center;
-          gap: 2px;
-          flex-shrink: 0;
-
-          .btn-action-icon {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all var(--transition-fast);
-
-            &:hover {
-              color: var(--text-main);
-              background: rgba(255, 255, 255, 0.08);
-            }
-
-            &.copied {
-              color: #4ade80;
-              background: rgba(74, 222, 128, 0.15);
-            }
-
-            &.delete-icon:hover {
-              color: #ef4444;
-              background: rgba(239, 68, 68, 0.1);
-            }
-          }
-
-          .inline-confirm {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-
-            .confirm-btn {
-              font-size: 10px;
-              padding: 2px 5px;
-              border-radius: 3px;
-              border: none;
-              cursor: pointer;
-              font-weight: 500;
-
-              &.danger {
-                background: #ef4444;
-                color: white;
-              }
-
-              &.cancel {
-                background: rgba(255, 255, 255, 0.1);
-                color: var(--text-muted);
-              }
-            }
-          }
+        svg {
+          color: var(--text-muted);
         }
       }
 
-      .invite-card-bottom {
+      .invite-actions {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding-left: 12px;
+        gap: 2px;
 
-        .invite-expiry-info {
+        .btn-action-icon {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
           display: flex;
           align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          color: var(--text-muted);
+          justify-content: center;
+          transition: all var(--transition-fast);
+
+          &:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.08);
+          }
+
+          &.copied {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.15);
+          }
+
+          &.delete-icon:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+          }
         }
 
-        .copied-tag {
-          font-size: 9px;
-          font-weight: 600;
-          color: #4ade80;
-          background: rgba(74, 222, 128, 0.15);
-          padding: 1px 4px;
-          border-radius: 3px;
+        .inline-confirm {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+
+          .confirm-btn {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+
+            &.danger {
+              background: #ef4444;
+              color: white;
+            }
+
+            &.cancel {
+              background: rgba(255, 255, 255, 0.1);
+              color: var(--text-muted);
+            }
+          }
         }
       }
     }
